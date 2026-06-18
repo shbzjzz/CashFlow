@@ -54,6 +54,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.data.model.*
 import com.example.presentation.viewmodel.*
 import androidx.compose.material.icons.filled.AccountCircle
+import com.example.ui.theme.SuccessGreen
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
@@ -3691,321 +3692,392 @@ fun SettingsScreen(
         }
     )
 
+    val activeUserName by viewModel.googleUserName.collectAsStateWithLifecycle()
+    val activeUserEmail by viewModel.googleUserEmail.collectAsStateWithLifecycle()
+    val isLoggedIn by viewModel.isGoogleLoggedIn.collectAsStateWithLifecycle()
+
+    val isFirebaseCustomConfigured = try {
+        val k = com.example.BuildConfig.FIREBASE_API_KEY
+        val app = com.example.BuildConfig.FIREBASE_APPLICATION_ID
+        val proj = com.example.BuildConfig.FIREBASE_PROJECT_ID
+        k.isNotBlank() && !k.startsWith("PLACEHOLDER") &&
+        app.isNotBlank() && !app.startsWith("PLACEHOLDER") &&
+        proj.isNotBlank() && !proj.startsWith("PLACEHOLDER")
+    } catch (e: Throwable) { false }
+
+    val pageBg = MaterialTheme.colorScheme.background
+    val cardBg = MaterialTheme.colorScheme.surface
+    val sectionLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val primaryText = MaterialTheme.colorScheme.onSurface
+    val subtleText = MaterialTheme.colorScheme.onSurfaceVariant
+    val dividerColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
+    val accentColor = MaterialTheme.colorScheme.primary
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(if (isDarkMode) Color(0xFF080F0D) else Color(0xFFF4F8F6))
+            .background(pageBg)
             .verticalScroll(rememberScrollState())
-            .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
+        // ── Header ──────────────────────────────────────────────
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = { onOpenDrawer() }) {
-                Icon(Icons.Default.Menu, contentDescription = "Menu", tint = MaterialTheme.colorScheme.primary)
+                Icon(
+                    Icons.Default.Menu,
+                    contentDescription = "Menu",
+                    tint = primaryText
+                )
             }
+            Spacer(modifier = Modifier.width(4.dp))
             Text(
-                text = "Theme & Settings",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (isDarkMode) Color(0xFF34D399) else Color(0xFF003527)
+                text = "Settings",
+                style = MaterialTheme.typography.headlineMedium,
+                color = primaryText
             )
         }
 
-        // Dark mode Row
-        SkeuomorphicCard(
-            modifier = Modifier.fillMaxWidth(),
-            isDark = isDarkMode
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            Row(
+
+            // ── APPEARANCE ───────────────────────────────────────
+            SettingsSectionLabel(label = "Appearance", color = sectionLabelColor)
+
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = cardBg),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                border = BorderStroke(1.dp, dividerColor)
             ) {
-                Column {
-                    Text(
-                        "Dark Theme Palette",
-                        fontWeight = FontWeight.Bold,
-                        color = if (isDarkMode) Color(0xFFE4F0EC) else Color(0xFF0E1915)
-                    )
-                    Text(
-                        "Enable sleek high-contrast night theme",
-                        fontSize = 12.sp,
-                        color = if (isDarkMode) Color(0xFF90A49E) else Color(0xFF3B524B)
-                    )
-                }
-                Switch(
-                    checked = isDarkMode,
-                    onCheckedChange = { viewModel.toggleDarkMode() },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = if (isDarkMode) Color(0xFF34D399) else Color(0xFF003527),
-                        checkedTrackColor = (if (isDarkMode) Color(0xFF34D399) else Color(0xFF003527)).copy(alpha = 0.3f),
-                        uncheckedThumbColor = Color.Gray,
-                        uncheckedTrackColor = Color.LightGray
-                    )
-                )
-            }
-        }
-
-        // Currency Selector Row
-        SkeuomorphicCard(
-            modifier = Modifier.fillMaxWidth(),
-            isDark = isDarkMode
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    "Primary Ledger Currency",
-                    fontWeight = FontWeight.Bold,
-                    color = if (isDarkMode) Color(0xFFE4F0EC) else Color(0xFF0E1915)
-                )
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val list = listOf("AED", "USD", "INR", "EUR")
-                    list.forEach { cur ->
-                        val active = currency == cur
-                        SkeuomorphicButton(
-                            onClick = { viewModel.setCurrency(cur) },
-                            isDark = isDarkMode,
-                            isSelected = active,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(
-                                text = cur,
-                                fontWeight = FontWeight.Bold,
-                                color = if (active) {
-                                    if (isDarkMode) Color(0xFF34D399) else Color(0xFF003527)
-                                } else {
-                                    if (isDarkMode) Color(0xFF90A49E) else Color(0xFF3B524B)
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        // CSV Local Export Card
-        SkeuomorphicCard(
-            modifier = Modifier.fillMaxWidth(),
-            isDark = isDarkMode
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text(
-                    "Backup & Recover Local Data",
-                    fontWeight = FontWeight.Bold,
-                    color = if (isDarkMode) Color(0xFFE4F0EC) else Color(0xFF0E1915)
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    SkeuomorphicButton(
-                        onClick = {
-                            val uri = viewModel.exportToCSV(context)
-                            if (uri != null) {
-                                val intent = Intent(Intent.ACTION_SEND).apply {
-                                    type = "text/csv"
-                                    putExtra(Intent.EXTRA_STREAM, uri)
-                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                }
-                                context.startActivity(Intent.createChooser(intent, "Export Transactions CSV"))
-                            } else {
-                                Toast.makeText(context, "Export error", Toast.LENGTH_SHORT).show()
-                            }
-                        },
-                        modifier = Modifier.weight(1f),
-                        isDark = isDarkMode
-                    ) {
+                    SettingsIconBox(icon = Icons.Default.DarkMode, tint = accentColor)
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Dark Mode", style = MaterialTheme.typography.titleSmall, color = primaryText)
                         Text(
-                            "Export CSV",
-                            fontWeight = FontWeight.Bold,
-                            color = if (isDarkMode) Color(0xFF34D399) else Color(0xFF003527)
+                            if (isDarkMode) "On" else "Off",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = subtleText
                         )
                     }
-                    SkeuomorphicButton(
-                        onClick = { fileChooserLauncher.launch(arrayOf("text/comma-separated-values", "text/csv")) },
-                        modifier = Modifier.weight(1f),
-                        isDark = isDarkMode
-                    ) {
-                        Text(
-                            "Import CSV",
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF10B981)
+                    Switch(
+                        checked = isDarkMode,
+                        onCheckedChange = { viewModel.toggleDarkMode() },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = MaterialTheme.colorScheme.surface,
+                            checkedTrackColor = accentColor,
+                            uncheckedThumbColor = MaterialTheme.colorScheme.surface,
+                            uncheckedTrackColor = MaterialTheme.colorScheme.outlineVariant
                         )
-                    }
+                    )
                 }
             }
-        }
 
-        // App PIN Lock Settings
-        SkeuomorphicCard(
-            modifier = Modifier.fillMaxWidth(),
-            isDark = isDarkMode
-        ) {
-            Row(
+            // ── CURRENCY ─────────────────────────────────────────
+            SettingsSectionLabel(label = "Currency", color = sectionLabelColor)
+
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = cardBg),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                border = BorderStroke(1.dp, dividerColor)
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "App PIN Security Protection",
-                        fontWeight = FontWeight.Bold,
-                        color = if (isDarkMode) Color(0xFFE4F0EC) else Color(0xFF0E1915)
-                    )
-                    Text(
-                        if (savedPin != null) "Lock is Active (PIN configured)" else "Not Configured (Danger: public access)",
-                        fontSize = 12.sp,
-                        color = if (savedPin != null) Color(0xFF10B981) else Color.Red
-                    )
-                }
-                SkeuomorphicButton(
-                    onClick = { showPinDialog = true },
-                    isDark = isDarkMode
-                ) {
-                    Text(
-                        text = if (savedPin != null) "Manage PIN" else "Configure",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isDarkMode) Color(0xFF34D399) else Color(0xFF003527)
-                    )
-                }
-            }
-        }
-
-        // Firebase Cloud Session Sync Card
-        val activeUserName by viewModel.googleUserName.collectAsStateWithLifecycle()
-        val activeUserEmail by viewModel.googleUserEmail.collectAsStateWithLifecycle()
-        val isLoggedIn by viewModel.isGoogleLoggedIn.collectAsStateWithLifecycle()
-
-        val isFirebaseCustomConfigured = try {
-            val k = com.example.BuildConfig.FIREBASE_API_KEY
-            val app = com.example.BuildConfig.FIREBASE_APPLICATION_ID
-            val proj = com.example.BuildConfig.FIREBASE_PROJECT_ID
-            k.isNotBlank() && !k.startsWith("PLACEHOLDER") &&
-            app.isNotBlank() && !app.startsWith("PLACEHOLDER") &&
-            proj.isNotBlank() && !proj.startsWith("PLACEHOLDER")
-        } catch (e: Throwable) { false }
-
-        SkeuomorphicCard(
-            modifier = Modifier.fillMaxWidth(),
-            isDark = isDarkMode
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    "Cloud Engine Sync Status",
-                    fontWeight = FontWeight.Bold,
-                    color = if (isDarkMode) Color(0xFFE4F0EC) else Color(0xFF0E1915)
-                )
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(10.dp)
-                            .background(
-                                color = if (isFirebaseCustomConfigured) Color(0xFF10B981) else Color(0xFFFBBF24),
-                                shape = CircleShape
-                            )
-                    )
-                    Text(
-                        text = if (isFirebaseCustomConfigured) "LIVE SERVER SYNC ACTIVE" else "LOCAL SANDBOX SYNC MODE",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isFirebaseCustomConfigured) Color(0xFF10B981) else Color(0xFFFBBF24)
-                    )
-                }
-
-                Text(
-                    text = if (isFirebaseCustomConfigured) {
-                        "Synchronized securely through Google Play authentication nodes and Firebase Database servers."
-                    } else {
-                        "Currently running on a fail-safe sandbox. Add keys to the AI Studio Secrets panel to connect to your real Firebase instance:"
-                    },
-                    fontSize = 12.sp,
-                    color = if (isDarkMode) Color(0xFF90A49E) else Color(0xFF3B524B)
-                )
-
-                if (!isFirebaseCustomConfigured) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(if (isDarkMode) Color(0x10FFFFFF) else Color(0x05000000))
-                            .padding(8.dp)
-                    ) {
-                        Text("• FIREBASE_API_KEY", fontSize = 11.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, color = if (isDarkMode) Color(0xFF34D399) else Color(0xFF003527))
-                        Text("• FIREBASE_APPLICATION_ID", fontSize = 11.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, color = if (isDarkMode) Color(0xFF34D399) else Color(0xFF003527))
-                        Text("• FIREBASE_PROJECT_ID", fontSize = 11.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, color = if (isDarkMode) Color(0xFF34D399) else Color(0xFF003527))
-                        Text("• FIREBASE_WEB_CLIENT_ID", fontSize = 11.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, color = if (isDarkMode) Color(0xFF34D399) else Color(0xFF003527))
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        SettingsIconBox(icon = Icons.Default.AttachMoney, tint = accentColor)
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Text("Primary Currency", style = MaterialTheme.typography.titleSmall, color = primaryText)
                     }
-                }
-
-                if (isLoggedIn && activeUserEmail != null) {
-                    Divider(color = (if (isDarkMode) Color.White else Color.Black).copy(alpha = 0.1f))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Column {
-                            Text(
-                                text = "Active Cloud Profile",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (isDarkMode) Color(0xFF90A49E) else Color(0xFF3B524B)
-                            )
-                            Text(
-                                text = "$activeUserName",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (isDarkMode) Color(0xFFE4F0EC) else Color(0xFF0E1915)
-                            )
-                            Text(
-                                text = "$activeUserEmail",
-                                fontSize = 11.sp,
-                                color = if (isDarkMode) Color(0xFF90A49E) else Color(0xFF3B524B)
-                            )
-                        }
-                        SkeuomorphicButton(
-                            onClick = {
-                                viewModel.logoutGoogle()
-                                Toast.makeText(context, "Session Logged Out", Toast.LENGTH_SHORT).show()
-                            },
-                            isDark = isDarkMode
-                        ) {
-                            Text("Logout", fontSize = 11.sp, color = Color.Red, fontWeight = FontWeight.Bold)
+                        listOf("AED", "USD", "INR", "EUR").forEach { cur ->
+                            val isActive = currency == cur
+                            OutlinedButton(
+                                onClick = { viewModel.setCurrency(cur) },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    containerColor = if (isActive) accentColor else Color.Transparent,
+                                    contentColor = if (isActive) MaterialTheme.colorScheme.onPrimary else subtleText
+                                ),
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (isActive) accentColor else dividerColor
+                                ),
+                                contentPadding = PaddingValues(vertical = 10.dp)
+                            ) {
+                                Text(
+                                    cur,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal
+                                )
+                            }
                         }
                     }
                 }
             }
+
+            // ── DATA ─────────────────────────────────────────────
+            SettingsSectionLabel(label = "Data", color = sectionLabelColor)
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = cardBg),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                border = BorderStroke(1.dp, dividerColor)
+            ) {
+                Column {
+                    // Export row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                val uri = viewModel.exportToCSV(context)
+                                if (uri != null) {
+                                    val intent = Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/csv"
+                                        putExtra(Intent.EXTRA_STREAM, uri)
+                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                    }
+                                    context.startActivity(Intent.createChooser(intent, "Export Transactions CSV"))
+                                } else {
+                                    Toast.makeText(context, "Export error", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        SettingsIconBox(icon = Icons.Default.Upload, tint = SuccessGreen)
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Export to CSV", style = MaterialTheme.typography.titleSmall, color = primaryText)
+                            Text("Share a backup of your transactions", style = MaterialTheme.typography.bodySmall, color = subtleText)
+                        }
+                        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = subtleText, modifier = Modifier.size(18.dp))
+                    }
+
+                    HorizontalDivider(color = dividerColor, modifier = Modifier.padding(horizontal = 16.dp))
+
+                    // Import row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                fileChooserLauncher.launch(arrayOf("text/comma-separated-values", "text/csv"))
+                            }
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        SettingsIconBox(icon = Icons.Default.Download, tint = accentColor)
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Import from CSV", style = MaterialTheme.typography.titleSmall, color = primaryText)
+                            Text("Restore from a previous backup", style = MaterialTheme.typography.bodySmall, color = subtleText)
+                        }
+                        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = subtleText, modifier = Modifier.size(18.dp))
+                    }
+                }
+            }
+
+            // ── SECURITY ─────────────────────────────────────────
+            SettingsSectionLabel(label = "Security", color = sectionLabelColor)
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = cardBg),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                border = BorderStroke(1.dp, dividerColor)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showPinDialog = true }
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    SettingsIconBox(
+                        icon = if (savedPin != null) Icons.Default.Lock else Icons.Default.LockOpen,
+                        tint = if (savedPin != null) SuccessGreen else MaterialTheme.colorScheme.error
+                    )
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("App PIN Lock", style = MaterialTheme.typography.titleSmall, color = primaryText)
+                        Text(
+                            if (savedPin != null) "Enabled — tap to manage" else "Disabled — tap to set up",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (savedPin != null) SuccessGreen else MaterialTheme.colorScheme.error
+                        )
+                    }
+                    Icon(Icons.Default.ChevronRight, contentDescription = null, tint = subtleText, modifier = Modifier.size(18.dp))
+                }
+            }
+
+            // ── CLOUD SYNC ───────────────────────────────────────
+            SettingsSectionLabel(label = "Cloud Sync", color = sectionLabelColor)
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = cardBg),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                border = BorderStroke(1.dp, dividerColor)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // Status row
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        SettingsIconBox(icon = Icons.Default.Cloud, tint = accentColor)
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Firebase Sync", style = MaterialTheme.typography.titleSmall, color = primaryText)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(7.dp)
+                                        .background(
+                                            color = if (isFirebaseCustomConfigured) SuccessGreen else Color(0xFFD97706),
+                                            shape = CircleShape
+                                        )
+                                )
+                                Text(
+                                    if (isFirebaseCustomConfigured) "Live" else "Sandbox mode",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (isFirebaseCustomConfigured) SuccessGreen else Color(0xFFD97706)
+                                )
+                            }
+                        }
+                    }
+
+                    if (!isFirebaseCustomConfigured) {
+                        Text(
+                            "Add Firebase credentials in AI Studio Secrets to enable live sync.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = subtleText
+                        )
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+                                .padding(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            listOf(
+                                "FIREBASE_API_KEY",
+                                "FIREBASE_APPLICATION_ID",
+                                "FIREBASE_PROJECT_ID",
+                                "FIREBASE_WEB_CLIENT_ID"
+                            ).forEach { key ->
+                                Text(
+                                    "• $key",
+                                    fontSize = 11.sp,
+                                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                    color = accentColor
+                                )
+                            }
+                        }
+                    }
+
+                    if (isLoggedIn && activeUserEmail != null) {
+                        HorizontalDivider(color = dividerColor)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.AccountCircle,
+                                    contentDescription = null,
+                                    tint = accentColor,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "$activeUserName",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = primaryText
+                                )
+                                Text(
+                                    "$activeUserEmail",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = subtleText
+                                )
+                            }
+                            TextButton(
+                                onClick = {
+                                    viewModel.logoutGoogle()
+                                    Toast.makeText(context, "Signed out", Toast.LENGTH_SHORT).show()
+                                }
+                            ) {
+                                Text(
+                                    "Sign Out",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 
+    // ── PIN Dialog ───────────────────────────────────────────────
     if (showPinDialog) {
         Dialog(onDismissRequest = { showPinDialog = false }) {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-                color = if (isDarkMode) Color(0xFF121B17) else Color.White
+                shape = RoundedCornerShape(20.dp),
+                color = cardBg,
+                tonalElevation = 4.dp
             ) {
                 Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(accentColor.copy(alpha = 0.1f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.Lock, contentDescription = null, tint = accentColor, modifier = Modifier.size(20.dp))
+                        }
+                        Text(
+                            "Set App PIN",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = primaryText
+                        )
+                    }
                     Text(
-                        "Configure App Lock PIN",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isDarkMode) Color(0xFF34D399) else Color(0xFF003527)
-                    )
-                    Text(
-                        "Enter a 4-digit code to lock CashFlow from prying eyes upon starting screen launches",
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        "Enter a 4-digit PIN to secure CashFlow on launch.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = subtleText
                     )
 
                     SkeuomorphicTextField(
@@ -4013,49 +4085,69 @@ fun SettingsScreen(
                         onValueChange = { if (it.length <= 4) pinInputValue = it },
                         isDark = isDarkMode,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        label = { Text("4 Digit Code PIN") }
+                        label = { Text("4-digit PIN") }
                     )
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        TextButton(onClick = {
-                            viewModel.setPin(null)
-                            showPinDialog = false
-                        }) {
-                            Text("Disable Lock", color = Color.Red, fontWeight = FontWeight.Bold)
+                        if (savedPin != null) {
+                            TextButton(onClick = {
+                                viewModel.setPin(null)
+                                showPinDialog = false
+                            }) {
+                                Text("Disable", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelLarge)
+                            }
                         }
                         Spacer(modifier = Modifier.weight(1f))
                         TextButton(onClick = { showPinDialog = false }) {
-                            Text(
-                                "Cancel",
-                                color = if (isDarkMode) Color(0xFF90A49E) else Color(0xFF3B524B)
-                            )
+                            Text("Cancel", color = subtleText, style = MaterialTheme.typography.labelLarge)
                         }
                         Spacer(modifier = Modifier.width(8.dp))
-                        SkeuomorphicButton(
+                        Button(
                             onClick = {
                                 if (pinInputValue.length == 4) {
                                     viewModel.setPin(pinInputValue)
                                     showPinDialog = false
                                 } else {
-                                    Toast.makeText(context, "Must enter exactly 4 digits", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "Enter exactly 4 digits", Toast.LENGTH_SHORT).show()
                                 }
                             },
-                            isDark = isDarkMode
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = accentColor)
                         ) {
-                            Text(
-                                "Save PIN",
-                                fontWeight = FontWeight.Bold,
-                                color = if (isDarkMode) Color(0xFF34D399) else Color(0xFF003527)
-                            )
+                            Text("Save PIN", style = MaterialTheme.typography.labelLarge)
                         }
                     }
                 }
             }
         }
+    }
+}
+
+// ── Settings helper composables ──────────────────────────────────
+
+@Composable
+private fun SettingsSectionLabel(label: String, color: Color) {
+    Text(
+        text = label.uppercase(),
+        style = MaterialTheme.typography.labelSmall,
+        color = color,
+        letterSpacing = 1.2.sp,
+        modifier = Modifier.padding(horizontal = 4.dp)
+    )
+}
+
+@Composable
+private fun SettingsIconBox(icon: ImageVector, tint: Color) {
+    Box(
+        modifier = Modifier
+            .size(38.dp)
+            .background(tint.copy(alpha = 0.10f), RoundedCornerShape(10.dp)),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
     }
 }
 
