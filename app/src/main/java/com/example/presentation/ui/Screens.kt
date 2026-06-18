@@ -54,6 +54,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.data.model.*
 import com.example.presentation.viewmodel.*
 import androidx.compose.material.icons.filled.AccountCircle
+import com.example.ui.theme.SuccessGreen
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
@@ -3691,321 +3692,392 @@ fun SettingsScreen(
         }
     )
 
+    val activeUserName by viewModel.googleUserName.collectAsStateWithLifecycle()
+    val activeUserEmail by viewModel.googleUserEmail.collectAsStateWithLifecycle()
+    val isLoggedIn by viewModel.isGoogleLoggedIn.collectAsStateWithLifecycle()
+
+    val isFirebaseCustomConfigured = try {
+        val k = com.example.BuildConfig.FIREBASE_API_KEY
+        val app = com.example.BuildConfig.FIREBASE_APPLICATION_ID
+        val proj = com.example.BuildConfig.FIREBASE_PROJECT_ID
+        k.isNotBlank() && !k.startsWith("PLACEHOLDER") &&
+        app.isNotBlank() && !app.startsWith("PLACEHOLDER") &&
+        proj.isNotBlank() && !proj.startsWith("PLACEHOLDER")
+    } catch (e: Throwable) { false }
+
+    val pageBg = MaterialTheme.colorScheme.background
+    val cardBg = MaterialTheme.colorScheme.surface
+    val sectionLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val primaryText = MaterialTheme.colorScheme.onSurface
+    val subtleText = MaterialTheme.colorScheme.onSurfaceVariant
+    val dividerColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
+    val accentColor = MaterialTheme.colorScheme.primary
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(if (isDarkMode) Color(0xFF080F0D) else Color(0xFFF4F8F6))
+            .background(pageBg)
             .verticalScroll(rememberScrollState())
-            .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
+        // ── Header ──────────────────────────────────────────────
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = { onOpenDrawer() }) {
-                Icon(Icons.Default.Menu, contentDescription = "Menu", tint = MaterialTheme.colorScheme.primary)
+                Icon(
+                    Icons.Default.Menu,
+                    contentDescription = "Menu",
+                    tint = primaryText
+                )
             }
+            Spacer(modifier = Modifier.width(4.dp))
             Text(
-                text = "Theme & Settings",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (isDarkMode) Color(0xFF34D399) else Color(0xFF003527)
+                text = "Settings",
+                style = MaterialTheme.typography.headlineMedium,
+                color = primaryText
             )
         }
 
-        // Dark mode Row
-        SkeuomorphicCard(
-            modifier = Modifier.fillMaxWidth(),
-            isDark = isDarkMode
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            Row(
+
+            // ── APPEARANCE ───────────────────────────────────────
+            SettingsSectionLabel(label = "Appearance", color = sectionLabelColor)
+
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = cardBg),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                border = BorderStroke(1.dp, dividerColor)
             ) {
-                Column {
-                    Text(
-                        "Dark Theme Palette",
-                        fontWeight = FontWeight.Bold,
-                        color = if (isDarkMode) Color(0xFFE4F0EC) else Color(0xFF0E1915)
-                    )
-                    Text(
-                        "Enable sleek high-contrast night theme",
-                        fontSize = 12.sp,
-                        color = if (isDarkMode) Color(0xFF90A49E) else Color(0xFF3B524B)
-                    )
-                }
-                Switch(
-                    checked = isDarkMode,
-                    onCheckedChange = { viewModel.toggleDarkMode() },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = if (isDarkMode) Color(0xFF34D399) else Color(0xFF003527),
-                        checkedTrackColor = (if (isDarkMode) Color(0xFF34D399) else Color(0xFF003527)).copy(alpha = 0.3f),
-                        uncheckedThumbColor = Color.Gray,
-                        uncheckedTrackColor = Color.LightGray
-                    )
-                )
-            }
-        }
-
-        // Currency Selector Row
-        SkeuomorphicCard(
-            modifier = Modifier.fillMaxWidth(),
-            isDark = isDarkMode
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    "Primary Ledger Currency",
-                    fontWeight = FontWeight.Bold,
-                    color = if (isDarkMode) Color(0xFFE4F0EC) else Color(0xFF0E1915)
-                )
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val list = listOf("AED", "USD", "INR", "EUR")
-                    list.forEach { cur ->
-                        val active = currency == cur
-                        SkeuomorphicButton(
-                            onClick = { viewModel.setCurrency(cur) },
-                            isDark = isDarkMode,
-                            isSelected = active,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(
-                                text = cur,
-                                fontWeight = FontWeight.Bold,
-                                color = if (active) {
-                                    if (isDarkMode) Color(0xFF34D399) else Color(0xFF003527)
-                                } else {
-                                    if (isDarkMode) Color(0xFF90A49E) else Color(0xFF3B524B)
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        // CSV Local Export Card
-        SkeuomorphicCard(
-            modifier = Modifier.fillMaxWidth(),
-            isDark = isDarkMode
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text(
-                    "Backup & Recover Local Data",
-                    fontWeight = FontWeight.Bold,
-                    color = if (isDarkMode) Color(0xFFE4F0EC) else Color(0xFF0E1915)
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    SkeuomorphicButton(
-                        onClick = {
-                            val uri = viewModel.exportToCSV(context)
-                            if (uri != null) {
-                                val intent = Intent(Intent.ACTION_SEND).apply {
-                                    type = "text/csv"
-                                    putExtra(Intent.EXTRA_STREAM, uri)
-                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                }
-                                context.startActivity(Intent.createChooser(intent, "Export Transactions CSV"))
-                            } else {
-                                Toast.makeText(context, "Export error", Toast.LENGTH_SHORT).show()
-                            }
-                        },
-                        modifier = Modifier.weight(1f),
-                        isDark = isDarkMode
-                    ) {
+                    SettingsIconBox(icon = Icons.Default.DarkMode, tint = accentColor)
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Dark Mode", style = MaterialTheme.typography.titleSmall, color = primaryText)
                         Text(
-                            "Export CSV",
-                            fontWeight = FontWeight.Bold,
-                            color = if (isDarkMode) Color(0xFF34D399) else Color(0xFF003527)
+                            if (isDarkMode) "On" else "Off",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = subtleText
                         )
                     }
-                    SkeuomorphicButton(
-                        onClick = { fileChooserLauncher.launch(arrayOf("text/comma-separated-values", "text/csv")) },
-                        modifier = Modifier.weight(1f),
-                        isDark = isDarkMode
-                    ) {
-                        Text(
-                            "Import CSV",
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF10B981)
+                    Switch(
+                        checked = isDarkMode,
+                        onCheckedChange = { viewModel.toggleDarkMode() },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = MaterialTheme.colorScheme.surface,
+                            checkedTrackColor = accentColor,
+                            uncheckedThumbColor = MaterialTheme.colorScheme.surface,
+                            uncheckedTrackColor = MaterialTheme.colorScheme.outlineVariant
                         )
-                    }
+                    )
                 }
             }
-        }
 
-        // App PIN Lock Settings
-        SkeuomorphicCard(
-            modifier = Modifier.fillMaxWidth(),
-            isDark = isDarkMode
-        ) {
-            Row(
+            // ── CURRENCY ─────────────────────────────────────────
+            SettingsSectionLabel(label = "Currency", color = sectionLabelColor)
+
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = cardBg),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                border = BorderStroke(1.dp, dividerColor)
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "App PIN Security Protection",
-                        fontWeight = FontWeight.Bold,
-                        color = if (isDarkMode) Color(0xFFE4F0EC) else Color(0xFF0E1915)
-                    )
-                    Text(
-                        if (savedPin != null) "Lock is Active (PIN configured)" else "Not Configured (Danger: public access)",
-                        fontSize = 12.sp,
-                        color = if (savedPin != null) Color(0xFF10B981) else Color.Red
-                    )
-                }
-                SkeuomorphicButton(
-                    onClick = { showPinDialog = true },
-                    isDark = isDarkMode
-                ) {
-                    Text(
-                        text = if (savedPin != null) "Manage PIN" else "Configure",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isDarkMode) Color(0xFF34D399) else Color(0xFF003527)
-                    )
-                }
-            }
-        }
-
-        // Firebase Cloud Session Sync Card
-        val activeUserName by viewModel.googleUserName.collectAsStateWithLifecycle()
-        val activeUserEmail by viewModel.googleUserEmail.collectAsStateWithLifecycle()
-        val isLoggedIn by viewModel.isGoogleLoggedIn.collectAsStateWithLifecycle()
-
-        val isFirebaseCustomConfigured = try {
-            val k = com.example.BuildConfig.FIREBASE_API_KEY
-            val app = com.example.BuildConfig.FIREBASE_APPLICATION_ID
-            val proj = com.example.BuildConfig.FIREBASE_PROJECT_ID
-            k.isNotBlank() && !k.startsWith("PLACEHOLDER") &&
-            app.isNotBlank() && !app.startsWith("PLACEHOLDER") &&
-            proj.isNotBlank() && !proj.startsWith("PLACEHOLDER")
-        } catch (e: Throwable) { false }
-
-        SkeuomorphicCard(
-            modifier = Modifier.fillMaxWidth(),
-            isDark = isDarkMode
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    "Cloud Engine Sync Status",
-                    fontWeight = FontWeight.Bold,
-                    color = if (isDarkMode) Color(0xFFE4F0EC) else Color(0xFF0E1915)
-                )
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(10.dp)
-                            .background(
-                                color = if (isFirebaseCustomConfigured) Color(0xFF10B981) else Color(0xFFFBBF24),
-                                shape = CircleShape
-                            )
-                    )
-                    Text(
-                        text = if (isFirebaseCustomConfigured) "LIVE SERVER SYNC ACTIVE" else "LOCAL SANDBOX SYNC MODE",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isFirebaseCustomConfigured) Color(0xFF10B981) else Color(0xFFFBBF24)
-                    )
-                }
-
-                Text(
-                    text = if (isFirebaseCustomConfigured) {
-                        "Synchronized securely through Google Play authentication nodes and Firebase Database servers."
-                    } else {
-                        "Currently running on a fail-safe sandbox. Add keys to the AI Studio Secrets panel to connect to your real Firebase instance:"
-                    },
-                    fontSize = 12.sp,
-                    color = if (isDarkMode) Color(0xFF90A49E) else Color(0xFF3B524B)
-                )
-
-                if (!isFirebaseCustomConfigured) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(if (isDarkMode) Color(0x10FFFFFF) else Color(0x05000000))
-                            .padding(8.dp)
-                    ) {
-                        Text("• FIREBASE_API_KEY", fontSize = 11.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, color = if (isDarkMode) Color(0xFF34D399) else Color(0xFF003527))
-                        Text("• FIREBASE_APPLICATION_ID", fontSize = 11.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, color = if (isDarkMode) Color(0xFF34D399) else Color(0xFF003527))
-                        Text("• FIREBASE_PROJECT_ID", fontSize = 11.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, color = if (isDarkMode) Color(0xFF34D399) else Color(0xFF003527))
-                        Text("• FIREBASE_WEB_CLIENT_ID", fontSize = 11.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, color = if (isDarkMode) Color(0xFF34D399) else Color(0xFF003527))
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        SettingsIconBox(icon = Icons.Default.AttachMoney, tint = accentColor)
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Text("Primary Currency", style = MaterialTheme.typography.titleSmall, color = primaryText)
                     }
-                }
-
-                if (isLoggedIn && activeUserEmail != null) {
-                    Divider(color = (if (isDarkMode) Color.White else Color.Black).copy(alpha = 0.1f))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Column {
-                            Text(
-                                text = "Active Cloud Profile",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (isDarkMode) Color(0xFF90A49E) else Color(0xFF3B524B)
-                            )
-                            Text(
-                                text = "$activeUserName",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (isDarkMode) Color(0xFFE4F0EC) else Color(0xFF0E1915)
-                            )
-                            Text(
-                                text = "$activeUserEmail",
-                                fontSize = 11.sp,
-                                color = if (isDarkMode) Color(0xFF90A49E) else Color(0xFF3B524B)
-                            )
-                        }
-                        SkeuomorphicButton(
-                            onClick = {
-                                viewModel.logoutGoogle()
-                                Toast.makeText(context, "Session Logged Out", Toast.LENGTH_SHORT).show()
-                            },
-                            isDark = isDarkMode
-                        ) {
-                            Text("Logout", fontSize = 11.sp, color = Color.Red, fontWeight = FontWeight.Bold)
+                        listOf("AED", "USD", "INR", "EUR").forEach { cur ->
+                            val isActive = currency == cur
+                            OutlinedButton(
+                                onClick = { viewModel.setCurrency(cur) },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    containerColor = if (isActive) accentColor else Color.Transparent,
+                                    contentColor = if (isActive) MaterialTheme.colorScheme.onPrimary else subtleText
+                                ),
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (isActive) accentColor else dividerColor
+                                ),
+                                contentPadding = PaddingValues(vertical = 10.dp)
+                            ) {
+                                Text(
+                                    cur,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal
+                                )
+                            }
                         }
                     }
                 }
             }
+
+            // ── DATA ─────────────────────────────────────────────
+            SettingsSectionLabel(label = "Data", color = sectionLabelColor)
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = cardBg),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                border = BorderStroke(1.dp, dividerColor)
+            ) {
+                Column {
+                    // Export row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                val uri = viewModel.exportToCSV(context)
+                                if (uri != null) {
+                                    val intent = Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/csv"
+                                        putExtra(Intent.EXTRA_STREAM, uri)
+                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                    }
+                                    context.startActivity(Intent.createChooser(intent, "Export Transactions CSV"))
+                                } else {
+                                    Toast.makeText(context, "Export error", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        SettingsIconBox(icon = Icons.Default.Upload, tint = SuccessGreen)
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Export to CSV", style = MaterialTheme.typography.titleSmall, color = primaryText)
+                            Text("Share a backup of your transactions", style = MaterialTheme.typography.bodySmall, color = subtleText)
+                        }
+                        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = subtleText, modifier = Modifier.size(18.dp))
+                    }
+
+                    HorizontalDivider(color = dividerColor, modifier = Modifier.padding(horizontal = 16.dp))
+
+                    // Import row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                fileChooserLauncher.launch(arrayOf("text/comma-separated-values", "text/csv"))
+                            }
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        SettingsIconBox(icon = Icons.Default.Download, tint = accentColor)
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Import from CSV", style = MaterialTheme.typography.titleSmall, color = primaryText)
+                            Text("Restore from a previous backup", style = MaterialTheme.typography.bodySmall, color = subtleText)
+                        }
+                        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = subtleText, modifier = Modifier.size(18.dp))
+                    }
+                }
+            }
+
+            // ── SECURITY ─────────────────────────────────────────
+            SettingsSectionLabel(label = "Security", color = sectionLabelColor)
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = cardBg),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                border = BorderStroke(1.dp, dividerColor)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showPinDialog = true }
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    SettingsIconBox(
+                        icon = if (savedPin != null) Icons.Default.Lock else Icons.Default.LockOpen,
+                        tint = if (savedPin != null) SuccessGreen else MaterialTheme.colorScheme.error
+                    )
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("App PIN Lock", style = MaterialTheme.typography.titleSmall, color = primaryText)
+                        Text(
+                            if (savedPin != null) "Enabled — tap to manage" else "Disabled — tap to set up",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (savedPin != null) SuccessGreen else MaterialTheme.colorScheme.error
+                        )
+                    }
+                    Icon(Icons.Default.ChevronRight, contentDescription = null, tint = subtleText, modifier = Modifier.size(18.dp))
+                }
+            }
+
+            // ── CLOUD SYNC ───────────────────────────────────────
+            SettingsSectionLabel(label = "Cloud Sync", color = sectionLabelColor)
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = cardBg),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                border = BorderStroke(1.dp, dividerColor)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // Status row
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        SettingsIconBox(icon = Icons.Default.Cloud, tint = accentColor)
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Firebase Sync", style = MaterialTheme.typography.titleSmall, color = primaryText)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(7.dp)
+                                        .background(
+                                            color = if (isFirebaseCustomConfigured) SuccessGreen else Color(0xFFD97706),
+                                            shape = CircleShape
+                                        )
+                                )
+                                Text(
+                                    if (isFirebaseCustomConfigured) "Live" else "Sandbox mode",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (isFirebaseCustomConfigured) SuccessGreen else Color(0xFFD97706)
+                                )
+                            }
+                        }
+                    }
+
+                    if (!isFirebaseCustomConfigured) {
+                        Text(
+                            "Add Firebase credentials in AI Studio Secrets to enable live sync.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = subtleText
+                        )
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+                                .padding(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            listOf(
+                                "FIREBASE_API_KEY",
+                                "FIREBASE_APPLICATION_ID",
+                                "FIREBASE_PROJECT_ID",
+                                "FIREBASE_WEB_CLIENT_ID"
+                            ).forEach { key ->
+                                Text(
+                                    "• $key",
+                                    fontSize = 11.sp,
+                                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                    color = accentColor
+                                )
+                            }
+                        }
+                    }
+
+                    if (isLoggedIn && activeUserEmail != null) {
+                        HorizontalDivider(color = dividerColor)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.AccountCircle,
+                                    contentDescription = null,
+                                    tint = accentColor,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "$activeUserName",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = primaryText
+                                )
+                                Text(
+                                    "$activeUserEmail",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = subtleText
+                                )
+                            }
+                            TextButton(
+                                onClick = {
+                                    viewModel.logoutGoogle()
+                                    Toast.makeText(context, "Signed out", Toast.LENGTH_SHORT).show()
+                                }
+                            ) {
+                                Text(
+                                    "Sign Out",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 
+    // ── PIN Dialog ───────────────────────────────────────────────
     if (showPinDialog) {
         Dialog(onDismissRequest = { showPinDialog = false }) {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-                color = if (isDarkMode) Color(0xFF121B17) else Color.White
+                shape = RoundedCornerShape(20.dp),
+                color = cardBg,
+                tonalElevation = 4.dp
             ) {
                 Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(accentColor.copy(alpha = 0.1f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.Lock, contentDescription = null, tint = accentColor, modifier = Modifier.size(20.dp))
+                        }
+                        Text(
+                            "Set App PIN",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = primaryText
+                        )
+                    }
                     Text(
-                        "Configure App Lock PIN",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isDarkMode) Color(0xFF34D399) else Color(0xFF003527)
-                    )
-                    Text(
-                        "Enter a 4-digit code to lock CashFlow from prying eyes upon starting screen launches",
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        "Enter a 4-digit PIN to secure CashFlow on launch.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = subtleText
                     )
 
                     SkeuomorphicTextField(
@@ -4013,49 +4085,69 @@ fun SettingsScreen(
                         onValueChange = { if (it.length <= 4) pinInputValue = it },
                         isDark = isDarkMode,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        label = { Text("4 Digit Code PIN") }
+                        label = { Text("4-digit PIN") }
                     )
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        TextButton(onClick = {
-                            viewModel.setPin(null)
-                            showPinDialog = false
-                        }) {
-                            Text("Disable Lock", color = Color.Red, fontWeight = FontWeight.Bold)
+                        if (savedPin != null) {
+                            TextButton(onClick = {
+                                viewModel.setPin(null)
+                                showPinDialog = false
+                            }) {
+                                Text("Disable", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelLarge)
+                            }
                         }
                         Spacer(modifier = Modifier.weight(1f))
                         TextButton(onClick = { showPinDialog = false }) {
-                            Text(
-                                "Cancel",
-                                color = if (isDarkMode) Color(0xFF90A49E) else Color(0xFF3B524B)
-                            )
+                            Text("Cancel", color = subtleText, style = MaterialTheme.typography.labelLarge)
                         }
                         Spacer(modifier = Modifier.width(8.dp))
-                        SkeuomorphicButton(
+                        Button(
                             onClick = {
                                 if (pinInputValue.length == 4) {
                                     viewModel.setPin(pinInputValue)
                                     showPinDialog = false
                                 } else {
-                                    Toast.makeText(context, "Must enter exactly 4 digits", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "Enter exactly 4 digits", Toast.LENGTH_SHORT).show()
                                 }
                             },
-                            isDark = isDarkMode
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = accentColor)
                         ) {
-                            Text(
-                                "Save PIN",
-                                fontWeight = FontWeight.Bold,
-                                color = if (isDarkMode) Color(0xFF34D399) else Color(0xFF003527)
-                            )
+                            Text("Save PIN", style = MaterialTheme.typography.labelLarge)
                         }
                     }
                 }
             }
         }
+    }
+}
+
+// ── Settings helper composables ──────────────────────────────────
+
+@Composable
+private fun SettingsSectionLabel(label: String, color: Color) {
+    Text(
+        text = label.uppercase(),
+        style = MaterialTheme.typography.labelSmall,
+        color = color,
+        letterSpacing = 1.2.sp,
+        modifier = Modifier.padding(horizontal = 4.dp)
+    )
+}
+
+@Composable
+private fun SettingsIconBox(icon: ImageVector, tint: Color) {
+    Box(
+        modifier = Modifier
+            .size(38.dp)
+            .background(tint.copy(alpha = 0.10f), RoundedCornerShape(10.dp)),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
     }
 }
 
@@ -4075,400 +4167,515 @@ fun EMIScreen(
     var showCreateEMIDialog by remember { mutableStateOf(false) }
     var selectedCategoryTab by remember { mutableStateOf("Installments") }
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    IconButton(onClick = { onOpenDrawer() }) {
-                        Icon(Icons.Default.Menu, contentDescription = "Menu", tint = MaterialTheme.colorScheme.primary)
-                    }
-                    Column {
-                        Text(
-                            text = "Installments & Debts",
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = "Active multi-month commitments & personal ledger",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                SkeuomorphicButton(
-                    onClick = { showCreateEMIDialog = true },
-                    isDark = isDark,
-                    isSelected = true,
-                    modifier = Modifier.size(46.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Add,
-                        contentDescription = "Add Track",
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-        }
+    val pageBg = MaterialTheme.colorScheme.background
+    val cardBg = MaterialTheme.colorScheme.surface
+    val primaryText = MaterialTheme.colorScheme.onSurface
+    val subtleText = MaterialTheme.colorScheme.onSurfaceVariant
+    val dividerColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
+    val accentColor = MaterialTheme.colorScheme.primary
 
-        // Elegant Neumorphic Tab switcher
-        item {
-            SkeuomorphicCard(
-                modifier = Modifier.fillMaxWidth(),
-                isDark = isDark,
-                shape = RoundedCornerShape(24.dp)
-            ) {
+    Box(modifier = Modifier.fillMaxSize().background(pageBg)) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 100.dp)
+        ) {
+            // ── Header ──────────────────────────────────────────
+            item {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    listOf("Installments", "Debts & Loans").forEach { tab ->
+                    IconButton(onClick = { onOpenDrawer() }) {
+                        Icon(Icons.Default.Menu, contentDescription = "Menu", tint = primaryText)
+                    }
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "EMIs & Debts",
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = primaryText
+                        )
+                        Text(
+                            text = "Track installments and personal loans",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = subtleText
+                        )
+                    }
+                }
+            }
+
+            // ── Tab Switcher ─────────────────────────────────────
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(14.dp))
+                        .padding(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    listOf(
+                        "Installments" to Icons.Default.CreditCard,
+                        "Debts & Loans" to Icons.Default.AccountBalance
+                    ).forEach { (tab, icon) ->
                         val isSelected = selectedCategoryTab == tab
-                        Box(
+                        Row(
                             modifier = Modifier
                                 .weight(1f)
-                                .height(40.dp)
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(
-                                    if (isSelected) {
-                                        MaterialTheme.colorScheme.primaryContainer
-                                    } else Color.Transparent
-                                )
-                                .clickable {
-                                    selectedCategoryTab = tab
-                                }
-                                .padding(vertical = 4.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = tab,
-                                color = if (isSelected) {
-                                    MaterialTheme.colorScheme.onPrimaryContainer
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                },
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        val filteredEmis = if (selectedCategoryTab == "Installments") {
-            emis.filter { !it.isDebt }
-        } else {
-            emis.filter { it.isDebt }
-        }
-
-        if (filteredEmis.isEmpty()) {
-            item {
-                SkeuomorphicCard(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                    isDark = isDark
-                ) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth().padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(14.dp)
-                    ) {
-                        Text(
-                            text = if (selectedCategoryTab == "Installments") "No payment installments logged yet." else "No active personal debts or loan sheets logged.",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = if (isDark) Color(0xFF90A49E) else Color(0xFF3B524B),
-                            textAlign = TextAlign.Center
-                        )
-                        SkeuomorphicButton(
-                            onClick = { showCreateEMIDialog = true },
-                            isDark = isDark
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (isSelected) cardBg else Color.Transparent)
+                                .clickable { selectedCategoryTab = tab }
+                                .padding(vertical = 10.dp, horizontal = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
                         ) {
                             Icon(
-                                Icons.Default.Add,
+                                icon,
                                 contentDescription = null,
-                                tint = if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309),
+                                tint = if (isSelected) accentColor else subtleText,
                                 modifier = Modifier.size(16.dp)
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = if (selectedCategoryTab == "Installments") "Add Installment Plan" else "Add Debt / Loan Sheet",
-                                color = if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309),
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp
+                                text = tab,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                                color = if (isSelected) accentColor else subtleText
                             )
                         }
                     }
                 }
+                Spacer(modifier = Modifier.height(16.dp))
             }
-        } else {
-            items(filteredEmis) { emi ->
-                var payAmount by remember { mutableStateOf("") }
-                var showPayDialog by remember { mutableStateOf(false) }
-                var selectedPayAccount by remember { mutableStateOf<AccountEntity?>(null) }
 
-                LaunchedEffect(accounts) {
-                    if (selectedPayAccount == null && accounts.isNotEmpty()) {
-                        selectedPayAccount = accounts.first()
+            val filteredEmis = if (selectedCategoryTab == "Installments") {
+                emis.filter { !it.isDebt }
+            } else {
+                emis.filter { it.isDebt }
+            }
+
+            // ── Empty State ──────────────────────────────────────
+            if (filteredEmis.isEmpty()) {
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 40.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(72.dp)
+                                .background(accentColor.copy(alpha = 0.08f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                if (selectedCategoryTab == "Installments") Icons.Default.CreditCard else Icons.Default.AccountBalance,
+                                contentDescription = null,
+                                tint = accentColor.copy(alpha = 0.5f),
+                                modifier = Modifier.size(36.dp)
+                            )
+                        }
+                        Text(
+                            text = if (selectedCategoryTab == "Installments") "No installments yet" else "No debts or loans yet",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = primaryText
+                        )
+                        Text(
+                            text = if (selectedCategoryTab == "Installments")
+                                "Track recurring payments like car loans or subscriptions."
+                            else
+                                "Keep track of money borrowed or lent to others.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = subtleText,
+                            textAlign = TextAlign.Center
+                        )
+                        Button(
+                            onClick = { showCreateEMIDialog = true },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = accentColor)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                if (selectedCategoryTab == "Installments") "Add Installment" else "Add Debt / Loan",
+                                style = MaterialTheme.typography.labelLarge
+                            )
+                        }
                     }
                 }
+            } else {
+                // ── EMI Cards ────────────────────────────────────
+                items(filteredEmis) { emi ->
+                    var payAmount by remember { mutableStateOf("") }
+                    var showPayDialog by remember { mutableStateOf(false) }
+                    var selectedPayAccount by remember { mutableStateOf<AccountEntity?>(null) }
 
-                SkeuomorphicCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    isDark = isDark
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                if (emi.isDebt) {
+                    LaunchedEffect(accounts) {
+                        if (selectedPayAccount == null && accounts.isNotEmpty()) {
+                            selectedPayAccount = accounts.first()
+                        }
+                    }
+
+                    val progress = if (emi.totalAmount > 0) (emi.paidAmount / emi.totalAmount).toFloat() else 1f
+                    val isSettled = (emi.totalAmount - emi.paidAmount) <= 0
+                    val isBorrowed = emi.debtType == "Borrowed"
+
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .padding(bottom = 12.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = cardBg),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                        border = BorderStroke(1.dp, dividerColor)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+
+                            // ── Card Header ──────────────────────
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Type icon box
+                                Box(
+                                    modifier = Modifier
+                                        .size(42.dp)
+                                        .background(
+                                            color = if (emi.isDebt) {
+                                                if (isBorrowed) Color(0xFFD97706).copy(alpha = 0.10f)
+                                                else SuccessGreen.copy(alpha = 0.10f)
+                                            } else accentColor.copy(alpha = 0.10f),
+                                            shape = RoundedCornerShape(12.dp)
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = if (emi.isDebt) {
+                                            if (isBorrowed) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward
+                                        } else Icons.Default.CreditCard,
+                                        contentDescription = null,
+                                        tint = if (emi.isDebt) {
+                                            if (isBorrowed) Color(0xFFD97706) else SuccessGreen
+                                        } else accentColor,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+
+                                // Title & meta
+                                Column(modifier = Modifier.weight(1f)) {
+                                    // Badge row
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                                     ) {
-                                        val color = if (emi.debtType == "Borrowed") Color(0xFFFBBF24) else Color(0xFF10B981)
-                                        Box(
-                                            modifier = Modifier
-                                                .clip(RoundedCornerShape(4.dp))
-                                                .background(color.copy(alpha = 0.15f))
-                                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                                        ) {
+                                        if (emi.isDebt) {
+                                            val badgeColor = if (isBorrowed) Color(0xFFD97706) else SuccessGreen
+                                            Box(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(4.dp))
+                                                    .background(badgeColor.copy(alpha = 0.12f))
+                                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                                            ) {
+                                                Text(
+                                                    text = if (isBorrowed) "Borrowed" else "Lent",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = badgeColor,
+                                                    fontWeight = FontWeight.SemiBold
+                                                )
+                                            }
                                             Text(
-                                                text = if (emi.debtType == "Borrowed") "Borrowed 🡓" else "Lent 🡑",
-                                                color = color,
-                                                fontSize = 9.sp,
-                                                fontWeight = FontWeight.Black
+                                                text = "${emi.tenureMonths} mo",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = subtleText
+                                            )
+                                        } else {
+                                            Box(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(4.dp))
+                                                    .background(accentColor.copy(alpha = 0.10f))
+                                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                                            ) {
+                                                Text(
+                                                    text = "Installment",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = accentColor,
+                                                    fontWeight = FontWeight.SemiBold
+                                                )
+                                            }
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = emi.title,
+                                        style = MaterialTheme.typography.titleSmall,
+                                        color = primaryText,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    if (emi.isDebt && emi.personName.isNotBlank()) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Person,
+                                                contentDescription = null,
+                                                tint = subtleText,
+                                                modifier = Modifier.size(12.dp)
+                                            )
+                                            Text(
+                                                text = emi.personName,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = subtleText
                                             )
                                         }
-                                        Text(
-                                            text = "Tenure: ${emi.tenureMonths} Mo",
-                                            fontSize = 10.sp,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
                                     }
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = emi.title,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 16.sp,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    if (emi.personName.isNotBlank()) {
-                                        Text(
-                                            text = "Flowing with: ${emi.personName}",
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = MaterialTheme.colorScheme.primary
+                                }
+
+                                // Delete button
+                                IconButton(
+                                    onClick = { viewModel.deleteEMI(emi) },
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .background(
+                                            MaterialTheme.colorScheme.error.copy(alpha = 0.08f),
+                                            RoundedCornerShape(10.dp)
                                         )
-                                    }
-                                } else {
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(4.dp))
-                                            .background(Color.Gray.copy(alpha = 0.15f))
-                                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                                            .width(72.dp)
-                                    ) {
-                                        Text(
-                                            text = "Installment Plan",
-                                            color = MaterialTheme.colorScheme.onSurface,
-                                            fontSize = 8.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            textAlign = TextAlign.Center
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = emi.title,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 16.sp,
-                                        color = MaterialTheme.colorScheme.onSurface
+                                ) {
+                                    Icon(
+                                        Icons.Default.DeleteOutline,
+                                        contentDescription = "Delete",
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(18.dp)
                                     )
                                 }
-                                Text(
-                                    text = "Monthly Day due: Day ${emi.dueDate}",
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            SkeuomorphicButton(
-                                onClick = { viewModel.deleteEMI(emi) },
-                                isDark = isDark,
-                                modifier = Modifier.size(38.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.Delete,
-                                    contentDescription = "Delete",
-                                    tint = Color.Red.copy(alpha = 0.8f),
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-
-                        val progress = if (emi.totalAmount > 0) (emi.paidAmount / emi.totalAmount).toFloat() else 1f
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(8.dp)
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxHeight()
-                                    .fillMaxWidth(progress.coerceIn(0f, 1f))
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(MaterialTheme.colorScheme.primary)
-                            )
-                        }
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text(
-                                    text = "Repaid/Paid: $currency ${String.format("%.2f", emi.paidAmount)}",
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Text(
-                                    text = "Target Total: $currency ${String.format("%.2f", emi.totalAmount)}",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
                             }
 
-                            val remaining = emi.totalAmount - emi.paidAmount
-                            if (remaining > 0) {
-                                SkeuomorphicButton(
-                                    onClick = { showPayDialog = true },
-                                    isDark = isDark,
-                                    isSelected = true
+                            // ── Progress Bar ─────────────────────
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
                                     Text(
-                                        "Log Repayment",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold
+                                        text = "Paid  $currency ${String.format("%.2f", emi.paidAmount)}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = subtleText
+                                    )
+                                    Text(
+                                        text = "${(progress * 100).toInt()}%",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = if (isSettled) SuccessGreen else accentColor,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(6.dp)
+                                        .clip(RoundedCornerShape(3.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxHeight()
+                                            .fillMaxWidth(progress.coerceIn(0f, 1f))
+                                            .clip(RoundedCornerShape(3.dp))
+                                            .background(if (isSettled) SuccessGreen else accentColor)
+                                    )
+                                }
+                            }
+
+                            // ── Footer Row ───────────────────────
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Due date chip
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(
+                                        Icons.Default.CalendarToday,
+                                        contentDescription = null,
+                                        tint = subtleText,
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                    Text(
+                                        text = "Due day ${emi.dueDate}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = subtleText
+                                    )
+                                }
+                                // Total
+                                Text(
+                                    text = "$currency ${String.format("%.2f", emi.totalAmount)}",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = primaryText,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+
+                            // ── Action Button ────────────────────
+                            if (isSettled) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(SuccessGreen.copy(alpha = 0.10f))
+                                        .padding(vertical = 10.dp),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        tint = SuccessGreen,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        "Fully Settled",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = SuccessGreen,
+                                        fontWeight = FontWeight.SemiBold
                                     )
                                 }
                             } else {
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .background(Color(0xFF059669).copy(alpha = 0.15f))
-                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                Button(
+                                    onClick = { showPayDialog = true },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = accentColor)
                                 ) {
-                                    Text(
-                                        "Fully Settled! ✨",
-                                        color = Color(0xFF10B981),
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold
+                                    Icon(
+                                        Icons.Default.Payments,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
                                     )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Log Repayment", style = MaterialTheme.typography.labelLarge)
                                 }
                             }
                         }
                     }
-                }
 
-                // Pay installment pop-up
-                if (showPayDialog) {
-                    Dialog(onDismissRequest = { showPayDialog = false }) {
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(24.dp),
-                            color = if (isDark) Color(0xFF121B17) else Color.White
-                        ) {
-                            Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                                Text(
-                                    text = "Log Multi-Month Installment",
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
-                                )
-                                Text(
-                                    text = "Recording repayment for tracker: ${emi.title}",
-                                    fontSize = 12.sp,
-                                    color = if (isDark) Color(0xFF90A49E) else Color(0xFF4C5D55)
-                                )
-
-                                SkeuomorphicTextField(
-                                    value = payAmount,
-                                    onValueChange = { payAmount = it },
-                                    label = { Text("Repayment Amount / Installment") },
-                                    isDark = isDark,
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                                )
-
-                                Text(
-                                    text = "Debit/Deduct from Source Vault Account:",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isDark) Color(0xFFE4F0EC) else Color(0xFF101B17)
-                                )
-                                Row(
-                                    modifier = Modifier.horizontalScroll(rememberScrollState()),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    // ── Pay Dialog ───────────────────────────────
+                    if (showPayDialog) {
+                        Dialog(onDismissRequest = { showPayDialog = false }) {
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(20.dp),
+                                color = cardBg,
+                                tonalElevation = 4.dp
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(24.dp),
+                                    verticalArrangement = Arrangement.spacedBy(16.dp)
                                 ) {
-                                    accounts.forEach { acc ->
-                                        val s = selectedPayAccount?.id == acc.id
-                                        SkeuomorphicButton(
-                                            onClick = { selectedPayAccount = acc },
-                                            isDark = isDark,
-                                            isSelected = s,
-                                            modifier = Modifier.widthIn(min = 100.dp)
+                                    // Dialog header
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(42.dp)
+                                                .background(accentColor.copy(alpha = 0.10f), CircleShape),
+                                            contentAlignment = Alignment.Center
                                         ) {
+                                            Icon(
+                                                Icons.Default.Payments,
+                                                contentDescription = null,
+                                                tint = accentColor,
+                                                modifier = Modifier.size(22.dp)
+                                            )
+                                        }
+                                        Column {
                                             Text(
-                                                text = acc.name,
-                                                fontSize = 12.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = if (s) {
-                                                    if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
-                                                } else {
-                                                    if (isDark) Color(0xFF90A49E) else Color(0xFF4C5D55)
-                                                }
+                                                "Log Repayment",
+                                                style = MaterialTheme.typography.titleLarge,
+                                                color = primaryText
+                                            )
+                                            Text(
+                                                emi.title,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = subtleText,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
                                             )
                                         }
                                     }
-                                }
 
-                                Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.End) {
-                                    TextButton(onClick = { showPayDialog = false }) {
-                                        Text("Cancel", color = Color.Gray)
-                                    }
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    SkeuomorphicButton(
-                                        onClick = {
-                                            val payVal = payAmount.toDoubleOrNull()
-                                            if (payVal != null && payVal > 0 && selectedPayAccount != null) {
-                                                viewModel.payEMIInstallment(emi, payVal, selectedPayAccount!!.id)
-                                                showPayDialog = false
-                                            }
-                                        },
-                                        isDark = isDark
+                                    SkeuomorphicTextField(
+                                        value = payAmount,
+                                        onValueChange = { payAmount = it },
+                                        label = { Text("Amount ($currency)") },
+                                        isDark = isDark,
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                                    )
+
+                                    // Account selector
+                                    Text(
+                                        "Deduct from account",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = subtleText
+                                    )
+                                    Row(
+                                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        Text(
-                                            "Submit Repay",
-                                            fontWeight = FontWeight.Bold,
-                                            color = if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
-                                        )
+                                        accounts.forEach { acc ->
+                                            val isSelected = selectedPayAccount?.id == acc.id
+                                            FilterChip(
+                                                selected = isSelected,
+                                                onClick = { selectedPayAccount = acc },
+                                                label = { Text(acc.name, style = MaterialTheme.typography.labelMedium) },
+                                                leadingIcon = if (isSelected) {
+                                                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
+                                                } else null,
+                                                colors = FilterChipDefaults.filterChipColors(
+                                                    selectedContainerColor = accentColor.copy(alpha = 0.12f),
+                                                    selectedLabelColor = accentColor,
+                                                    selectedLeadingIconColor = accentColor
+                                                )
+                                            )
+                                        }
+                                    }
+
+                                    // Action buttons
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.End,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        TextButton(onClick = { showPayDialog = false }) {
+                                            Text("Cancel", color = subtleText, style = MaterialTheme.typography.labelLarge)
+                                        }
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Button(
+                                            onClick = {
+                                                val payVal = payAmount.toDoubleOrNull()
+                                                if (payVal != null && payVal > 0 && selectedPayAccount != null) {
+                                                    viewModel.payEMIInstallment(emi, payVal, selectedPayAccount!!.id)
+                                                    showPayDialog = false
+                                                }
+                                            },
+                                            shape = RoundedCornerShape(10.dp),
+                                            colors = ButtonDefaults.buttonColors(containerColor = accentColor)
+                                        ) {
+                                            Icon(Icons.Default.Payments, contentDescription = null, modifier = Modifier.size(16.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text("Confirm", style = MaterialTheme.typography.labelLarge)
+                                        }
                                     }
                                 }
                             }
@@ -4477,22 +4684,34 @@ fun EMIScreen(
                 }
             }
         }
+
+        // ── FAB Add Button ────────────────────────────────────────
+        FloatingActionButton(
+            onClick = { showCreateEMIDialog = true },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(24.dp),
+            containerColor = accentColor,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Icon(Icons.Default.Add, contentDescription = "Add EMI", modifier = Modifier.size(24.dp))
+        }
     }
 
-    // Create EMI / Debt Tracker Dialog
+    // ── Create EMI / Debt Dialog ──────────────────────────────────
     if (showCreateEMIDialog) {
-        var modeTab by remember(showCreateEMIDialog, selectedCategoryTab) { mutableStateOf(if (selectedCategoryTab == "Installments") "Standard" else "Debt") }
-
+        var modeTab by remember(showCreateEMIDialog, selectedCategoryTab) {
+            mutableStateOf(if (selectedCategoryTab == "Installments") "Standard" else "Debt")
+        }
         var emiTitle by remember { mutableStateOf("") }
         var emiTotal by remember { mutableStateOf("") }
         var emiPaid by remember { mutableStateOf("") }
         var emiDueDate by remember { mutableStateOf("15th") }
-
-        // Debt specific states
-        var debtType by remember { mutableStateOf("Borrowed") } // "Borrowed", "Lent"
+        var debtType by remember { mutableStateOf("Borrowed") }
         var debtorName by remember { mutableStateOf("") }
         var debtTenureMonths by remember { mutableStateOf("12") }
-        var affectAccountBalance by remember { mutableStateOf(false) } // MUST default to false! Let user decide
+        var affectAccountBalance by remember { mutableStateOf(false) }
         var linkedAccount by remember { mutableStateOf<AccountEntity?>(null) }
 
         LaunchedEffect(accounts) {
@@ -4503,48 +4722,100 @@ fun EMIScreen(
 
         Dialog(onDismissRequest = { showCreateEMIDialog = false }) {
             Surface(
-                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
-                shape = RoundedCornerShape(24.dp),
-                color = if (isDark) Color(0xFF111A16) else Color.White
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                shape = RoundedCornerShape(20.dp),
+                color = cardBg,
+                tonalElevation = 4.dp
             ) {
-                Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Text(
-                        text = if (modeTab == "Standard") "New Installment Plan" else "New Debt / Loan Record",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
-                    )
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // ── Dialog Header ─────────────────────────
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(42.dp)
+                                .background(accentColor.copy(alpha = 0.10f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                if (modeTab == "Standard") Icons.Default.CreditCard else Icons.Default.AccountBalance,
+                                contentDescription = null,
+                                tint = accentColor,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                        Text(
+                            text = if (modeTab == "Standard") "New Installment" else "New Debt / Loan",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = primaryText
+                        )
+                    }
+
+                    // ── Mode Tab ──────────────────────────────
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(10.dp))
+                            .padding(3.dp),
+                        horizontalArrangement = Arrangement.spacedBy(3.dp)
+                    ) {
+                        listOf("Standard" to Icons.Default.CreditCard, "Debt" to Icons.Default.AccountBalance).forEach { (tab, icon) ->
+                            val isSelected = modeTab == tab
+                            Row(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (isSelected) cardBg else Color.Transparent)
+                                    .clickable { modeTab = tab }
+                                    .padding(vertical = 9.dp, horizontal = 8.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(icon, contentDescription = null, tint = if (isSelected) accentColor else subtleText, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(5.dp))
+                                Text(
+                                    tab,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = if (isSelected) accentColor else subtleText,
+                                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                                )
+                            }
+                        }
+                    }
 
                     if (modeTab == "Debt") {
-                        // DEBT FORM PATH
-                        Text(
-                            text = "DEBT TRANSACTION TYPE Selection",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isDark) Color(0xFF90A49E) else Color(0xFF4C5D55)
-                        )
+                        // ── Debt Type Toggle ──────────────────
+                        Text("Debt type", style = MaterialTheme.typography.labelMedium, color = subtleText)
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            listOf("Borrowed", "Lent").forEach { dt ->
+                            listOf(
+                                "Borrowed" to Icons.Default.ArrowDownward,
+                                "Lent" to Icons.Default.ArrowUpward
+                            ).forEach { (dt, icon) ->
                                 val active = debtType == dt
-                                SkeuomorphicButton(
+                                val btnColor = if (dt == "Borrowed") Color(0xFFD97706) else SuccessGreen
+                                OutlinedButton(
                                     onClick = { debtType = dt },
-                                    isDark = isDark,
-                                    isSelected = active,
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        containerColor = if (active) btnColor.copy(alpha = 0.10f) else Color.Transparent,
+                                        contentColor = if (active) btnColor else subtleText
+                                    ),
+                                    border = BorderStroke(1.dp, if (active) btnColor else dividerColor)
                                 ) {
-                                    Text(
-                                        text = if (dt == "Borrowed") "I Borrowed" else "I Lent",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 13.sp,
-                                        color = if (active) {
-                                            if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
-                                        } else {
-                                            if (isDark) Color(0xFF90A49E) else Color(0xFF4C5D55)
-                                        }
-                                    )
+                                    Icon(icon, contentDescription = null, modifier = Modifier.size(15.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(if (dt == "Borrowed") "I Borrowed" else "I Lent", style = MaterialTheme.typography.labelMedium)
                                 }
                             }
                         }
@@ -4553,33 +4824,29 @@ fun EMIScreen(
                             value = debtorName,
                             onValueChange = { debtorName = it },
                             isDark = isDark,
-                            label = { Text("Person / Entity Name (e.g. John Doe)") }
+                            label = { Text("Person / Entity Name") }
                         )
-
                         SkeuomorphicTextField(
                             value = emiTotal,
                             onValueChange = { emiTotal = it },
                             isDark = isDark,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            label = { Text("Principal Total Amount ($currency)") }
+                            label = { Text("Total Amount ($currency)") }
                         )
-
                         SkeuomorphicTextField(
                             value = emiPaid,
                             onValueChange = { emiPaid = it },
                             isDark = isDark,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            label = { Text("Initial Amount Already Repaid ($currency)") }
+                            label = { Text("Already Repaid ($currency)") }
                         )
-
                         SkeuomorphicTextField(
                             value = debtTenureMonths,
                             onValueChange = { debtTenureMonths = it },
                             isDark = isDark,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            label = { Text("Tenure Entry (in months, e.g. 12)") }
+                            label = { Text("Tenure (months)") }
                         )
-
                         DatePickerField(
                             value = emiDueDate,
                             label = "Monthly Due Day",
@@ -4598,93 +4865,88 @@ fun EMIScreen(
                             }
                         )
 
-                        // Option to add/subtract debt/lend amount from any account in vault by default (defaults to false)
-                        Row(
+                        // Affect balance toggle
+                        Card(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                            elevation = CardDefaults.cardElevation(0.dp)
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Affect Vault Balance instantly?",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp,
-                                    color = if (isDark) Color(0xFFE4F0EC) else Color(0xFF101B17)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.AccountBalance,
+                                    contentDescription = null,
+                                    tint = accentColor,
+                                    modifier = Modifier.size(20.dp)
                                 )
-                                Text(
-                                    text = "Adjust funds from active account now",
-                                    fontSize = 11.sp,
-                                    color = if (isDark) Color(0xFF90A49E) else Color(0xFF4C5D55)
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("Adjust account balance now", style = MaterialTheme.typography.labelMedium, color = primaryText)
+                                    Text("Deduct or add from vault immediately", style = MaterialTheme.typography.bodySmall, color = subtleText)
+                                }
+                                Switch(
+                                    checked = affectAccountBalance,
+                                    onCheckedChange = { affectAccountBalance = it },
+                                    colors = SwitchDefaults.colors(
+                                        checkedTrackColor = accentColor,
+                                        checkedThumbColor = MaterialTheme.colorScheme.surface
+                                    )
                                 )
                             }
-                            Switch(
-                                checked = affectAccountBalance,
-                                onCheckedChange = { affectAccountBalance = it },
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309),
-                                    checkedTrackColor = (if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)).copy(alpha = 0.3f)
-                                )
-                            )
                         }
 
                         if (affectAccountBalance && accounts.isNotEmpty()) {
-                            Text(
-                                text = "Choose Account To Balance:",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (isDark) Color(0xFFE4F0EC) else Color(0xFF101B17)
-                            )
+                            Text("Choose account", style = MaterialTheme.typography.labelMedium, color = subtleText)
                             Row(
                                 modifier = Modifier.horizontalScroll(rememberScrollState()),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 accounts.forEach { acc ->
                                     val isSelected = linkedAccount?.id == acc.id
-                                    SkeuomorphicButton(
+                                    FilterChip(
+                                        selected = isSelected,
                                         onClick = { linkedAccount = acc },
-                                        isDark = isDark,
-                                        isSelected = isSelected,
-                                        modifier = Modifier.widthIn(min = 90.dp)
-                                    ) {
-                                        Text(
-                                            text = acc.name,
-                                            fontSize = 12.sp,
-                                            color = if (isSelected) {
-                                                if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
-                                            } else {
-                                                if (isDark) Color(0xFF90A49E) else Color(0xFF4C5D55)
-                                            }
+                                        label = { Text(acc.name, style = MaterialTheme.typography.labelMedium) },
+                                        leadingIcon = if (isSelected) {
+                                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
+                                        } else null,
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = accentColor.copy(alpha = 0.12f),
+                                            selectedLabelColor = accentColor,
+                                            selectedLeadingIconColor = accentColor
                                         )
-                                    }
+                                    )
                                 }
                             }
                         }
 
                     } else {
-                        // STANDARD INSTALLMENT PATH
+                        // ── Standard Installment Form ─────────
                         SkeuomorphicTextField(
                             value = emiTitle,
                             onValueChange = { emiTitle = it },
                             isDark = isDark,
                             label = { Text("Installment Name (e.g. Car Loan)") }
                         )
-
                         SkeuomorphicTextField(
                             value = emiTotal,
                             onValueChange = { emiTotal = it },
                             isDark = isDark,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            label = { Text("Total Payment Obligation") }
+                            label = { Text("Total Amount ($currency)") }
                         )
-
                         SkeuomorphicTextField(
                             value = emiPaid,
                             onValueChange = { emiPaid = it },
                             isDark = isDark,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            label = { Text("Already Repaid Amount") }
+                            label = { Text("Already Paid ($currency)") }
                         )
-
                         DatePickerField(
                             value = emiDueDate,
                             label = "Monthly Due Day",
@@ -4704,23 +4966,26 @@ fun EMIScreen(
                         )
                     }
 
-                    Row(modifier = Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.End) {
+                    // ── Dialog Actions ────────────────────────
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         TextButton(onClick = { showCreateEMIDialog = false }) {
-                            Text("Cancel", color = Color.Gray)
+                            Text("Cancel", color = subtleText, style = MaterialTheme.typography.labelLarge)
                         }
                         Spacer(modifier = Modifier.width(8.dp))
-                        SkeuomorphicButton(
+                        Button(
                             onClick = {
                                 val tot = emiTotal.toDoubleOrNull() ?: 0.0
                                 val pd = emiPaid.toDoubleOrNull() ?: 0.0
                                 val dayVal = emiDueDate.filter { it.isDigit() }.toIntOrNull() ?: 15
-                                
+
                                 if (modeTab == "Debt") {
                                     if (debtorName.isNotBlank() && tot > 0) {
                                         val finalTitle = "Debt: $debtType ($debtorName)"
                                         val tenure = debtTenureMonths.toIntOrNull() ?: 12
-                                        
-                                        // 1. Create the EMI tracking record
                                         viewModel.addEMI(
                                             title = finalTitle,
                                             total = tot,
@@ -4731,10 +4996,7 @@ fun EMIScreen(
                                             personName = debtorName,
                                             tenureMonths = tenure
                                         )
-                                        
                                         com.example.receiver.EmiAlarmScheduler.scheduleEmiAlert(context, finalTitle, dayVal)
-
-                                        // 2. Adjust funds if requested
                                         if (affectAccountBalance && linkedAccount != null) {
                                             val finalType = if (debtType == "Borrowed") "Income" else "Expense"
                                             viewModel.addTransaction(
@@ -4747,10 +5009,9 @@ fun EMIScreen(
                                                 note = "[Debt Track Initialized] $debtType from/to $debtorName"
                                             )
                                         }
-
                                         showCreateEMIDialog = false
                                     } else {
-                                        Toast.makeText(context, "Please enter valid debt amount and person", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, "Enter a valid amount and person name", Toast.LENGTH_SHORT).show()
                                     }
                                 } else {
                                     if (emiTitle.isNotBlank() && tot > 0) {
@@ -4758,17 +5019,16 @@ fun EMIScreen(
                                         com.example.receiver.EmiAlarmScheduler.scheduleEmiAlert(context, emiTitle, dayVal)
                                         showCreateEMIDialog = false
                                     } else {
-                                        Toast.makeText(context, "Please enter a valid plan name and total obligation", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, "Enter a valid name and total amount", Toast.LENGTH_SHORT).show()
                                     }
                                 }
                             },
-                            isDark = isDark
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = accentColor)
                         ) {
-                            Text(
-                                "Create Track",
-                                fontWeight = FontWeight.Bold,
-                                color = if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
-                            )
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Create", style = MaterialTheme.typography.labelLarge)
                         }
                     }
                 }
