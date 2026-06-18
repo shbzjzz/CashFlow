@@ -1,0 +1,4778 @@
+package com.example.presentation.ui
+
+import android.app.Activity
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.*
+import androidx.compose.foundation.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavController
+import coil.compose.AsyncImage
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.example.data.model.*
+import com.example.presentation.viewmodel.*
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialRequest
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
+import kotlin.math.cos
+import kotlin.math.sin
+
+// Navigation Routes
+object Routes {
+    const val DASHBOARD = "dashboard"
+    const val ADD_TRANSACTION = "add_transaction"
+    const val ACCOUNTS = "accounts"
+    const val CATEGORIES = "categories"
+    const val REPORTS = "reports"
+    const val BUDGETS = "budgets"
+    const val SETTINGS = "settings"
+    const val EMIS = "emis"
+    const val NOTIFICATIONS = "notifications"
+}
+
+// Helper to convert hex string color securely to Compose color
+fun parseHexColor(hex: String): Color {
+    return try {
+        Color(android.graphics.Color.parseColor(hex))
+    } catch (e: Exception) {
+        Color.Gray
+    }
+}
+
+// Native Material DatePicker wrapper to avoid bulky compose overlays
+fun showAndroidDatePicker(
+    context: Context,
+    initialTime: Long,
+    onDateSelected: (Long) -> Unit
+) {
+    val calendar = Calendar.getInstance().apply { timeInMillis = initialTime }
+    android.app.DatePickerDialog(
+        context,
+        { _, year, month, dayOfMonth ->
+            calendar.set(Calendar.YEAR, year)
+            calendar.set(Calendar.MONTH, month)
+            calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth)
+            onDateSelected(calendar.timeInMillis)
+        },
+        calendar.get(Calendar.YEAR),
+        calendar.get(Calendar.MONTH),
+        calendar.get(Calendar.DAY_OF_MONTH)
+    ).show()
+}
+
+@Composable
+fun SkeuomorphicCard(
+    modifier: Modifier = Modifier,
+    isDark: Boolean,
+    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(16.dp),
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Card(
+        modifier = modifier.shadow(
+            elevation = 4.dp,
+            shape = shape,
+            clip = false,
+            ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+            spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+        ),
+        shape = shape,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ),
+        border = BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            content = content
+        )
+    }
+}
+
+@Composable
+fun SkeuomorphicButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    isDark: Boolean,
+    enabled: Boolean = true,
+    isSelected: Boolean = false,
+    content: @Composable RowScope.() -> Unit
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = 48.dp),
+        enabled = enabled,
+        shape = RoundedCornerShape(14.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+            contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+        ),
+        elevation = ButtonDefaults.buttonElevation(
+            defaultElevation = 1.dp,
+            pressedElevation = 0.dp
+        )
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+            content = content
+        )
+    }
+}
+
+@Composable
+fun SkeuomorphicTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    isDark: Boolean,
+    label: @Composable (() -> Unit)? = null,
+    placeholder: @Composable (() -> Unit)? = null,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    singleLine: Boolean = true
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = modifier.fillMaxWidth(),
+        label = label,
+        placeholder = placeholder,
+        keyboardOptions = keyboardOptions,
+        singleLine = singleLine,
+        shape = RoundedCornerShape(12.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            focusedContainerColor = MaterialTheme.colorScheme.surface,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface
+        )
+    )
+}
+
+@Composable
+fun DatePickerField(
+    value: String,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier.fillMaxWidth()
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(label) },
+            trailingIcon = {
+                Icon(
+                    imageVector = Icons.Default.DateRange,
+                    contentDescription = "Select Date",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface
+            )
+        )
+        // Absolute transparent touch interceptor overlay
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(Color.Transparent)
+                .clickable(onClick = onClick)
+        )
+    }
+}
+
+@Composable
+fun LoginScreen(viewModel: WealthViewModel) {
+    val isDark by viewModel.isDarkMode.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    var isSigningIn by remember { mutableStateOf(false) }
+    var showGoogleSelector by remember { mutableStateOf(false) }
+    var rawEmailInput by remember { mutableStateOf("") }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(24.dp)
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // CashFlow Logo Card with teal ambient glow shadow
+        SkeuomorphicCard(
+            modifier = Modifier
+                .size(100.dp)
+                .padding(bottom = 8.dp),
+            isDark = isDark,
+            shape = RoundedCornerShape(26.dp)
+        ) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = Icons.Default.AccountCircle,
+                    contentDescription = "CashFlow Logo",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(54.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = "CASHFLOW",
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Black,
+            color = MaterialTheme.colorScheme.primary,
+            letterSpacing = 2.sp
+        )
+
+        Text(
+            text = "Premium Modern FinTech Experience",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // GOOGLE SIGN IN CARD
+        SkeuomorphicCard(
+            modifier = Modifier.fillMaxWidth(),
+            isDark = isDark
+        ) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "SECURE GOOGLE USER SIGN-IN",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Text(
+                    text = "Authenticate securely to unlock and synchronize your cash ledger with the Firebase secure backend.",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 18.sp,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                SkeuomorphicButton(
+                    onClick = {
+                        if (isSigningIn) return@SkeuomorphicButton
+                        isSigningIn = true
+
+                        coroutineScope.launch {
+                            try {
+                                val credentialManager = CredentialManager.create(context)
+                                val webClientId = try {
+                                    com.example.BuildConfig.FIREBASE_WEB_CLIENT_ID.takeIf { it.isNotBlank() && !it.startsWith("PLACEHOLDER") }
+                                } catch (e: Throwable) { null } ?: "949216766468.apps.googleusercontent.com"
+
+                                val googleIdOption = GetGoogleIdOption.Builder()
+                                    .setFilterByAuthorizedAccounts(false)
+                                    .setServerClientId(webClientId)
+                                    .build()
+
+                                val request = GetCredentialRequest.Builder()
+                                    .addCredentialOption(googleIdOption)
+                                    .build()
+
+                                // Launching native bottom sheet
+                                val result = credentialManager.getCredential(
+                                    request = request,
+                                    context = context,
+                                )
+
+                                val credential = result.credential
+                                if (credential is GoogleIdTokenCredential) {
+                                    val idToken = credential.idToken
+                                    val email = credential.id
+                                    val name = credential.displayName ?: email.substringBefore("@")
+                                    viewModel.loginWithGoogle(name, email, idToken)
+                                    Toast.makeText(context, "Welcome back, $name", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    // Trigger beautiful selector dialog as an interactive backup
+                                    showGoogleSelector = true
+                                }
+                            } catch (e: Exception) {
+                                // Soft fallback to selector dialog so they can choose accounts interactively
+                                showGoogleSelector = true
+                            } finally {
+                                isSigningIn = false
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    isDark = isDark,
+                    isSelected = true
+                ) {
+                    if (isSigningIn) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(24.dp))
+                    } else {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                            Icon(Icons.Default.Star, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onPrimary)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Continue with Google",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // ==========================================
+        // DYNAMIC GOOGLE ACCOUNT SELECTOR DIALOG (No hardcoded emails)
+        // ==========================================
+        if (showGoogleSelector) {
+            val savedAccounts by viewModel.savedAccounts.collectAsStateWithLifecycle()
+
+            Dialog(
+                onDismissRequest = { showGoogleSelector = false },
+                properties = DialogProperties(usePlatformDefaultWidth = false)
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth(0.92f)
+                        .padding(16.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = "G",
+                                fontSize = 32.sp,
+                                fontWeight = FontWeight.Black,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "oogle",
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+
+                        Text(
+                            text = "Choose an account to continue to CashFlow",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                        if (savedAccounts.isNotEmpty()) {
+                            Text(
+                                text = "Saved profiles on this device:",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+
+                            // Render and iterate through local persisted accounts dynamically
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(10.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 200.dp)
+                                    .verticalScroll(rememberScrollState())
+                            ) {
+                                savedAccounts.forEach { account ->
+                                    val (name, email) = account
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                                            .clickable {
+                                                viewModel.loginWithGoogle(name, email)
+                                                showGoogleSelector = false
+                                                Toast.makeText(context, "Welcome back, $name", Toast.LENGTH_SHORT).show()
+                                            }
+                                            .padding(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(36.dp)
+                                                .clip(CircleShape)
+                                                .background(MaterialTheme.colorScheme.primary),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = name.take(1).uppercase(Locale.getDefault()),
+                                                color = MaterialTheme.colorScheme.onPrimary,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 16.sp
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = name,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 13.sp,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                            Text(
+                                                text = email,
+                                                fontSize = 11.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                        IconButton(
+                                            onClick = {
+                                                viewModel.removeAccount(email)
+                                                Toast.makeText(context, "Account profile cleared", Toast.LENGTH_SHORT).show()
+                                            },
+                                            modifier = Modifier.size(28.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Close,
+                                                contentDescription = "Remove account profile",
+                                                tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            // Blank placeholder empty state when no historical profiles are stored yet 
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "No saved active Google accounts found. Enter details below to dynamically register.",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+
+                        Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                        // Custom dynamic configuration section 
+                        Text(
+                            text = "Or Authenticate New Email Account:",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = rawEmailInput,
+                                onValueChange = { rawEmailInput = it },
+                                placeholder = { Text("your.email@gmail.com") },
+                                singleLine = true,
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                                )
+                            )
+
+                            SkeuomorphicButton(
+                                onClick = {
+                                    if (rawEmailInput.isNotBlank() && rawEmailInput.contains("@") && rawEmailInput.contains(".")) {
+                                        val customName = rawEmailInput.substringBefore("@")
+                                            .replace(".", " ")
+                                            .replace("_", " ")
+                                            .split(" ")
+                                            .joinToString(" ") { segment ->
+                                                segment.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+                                            }
+                                        viewModel.loginWithGoogle(customName, rawEmailInput)
+                                        showGoogleSelector = false
+                                        Toast.makeText(context, "Logged in as $customName", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        Toast.makeText(context, "Please enter a valid Google email", Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                                isDark = isDark,
+                                isSelected = true,
+                                modifier = Modifier.height(52.dp)
+                            ) {
+                                Text("Go", fontWeight = FontWeight.Bold)
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        TextButton(
+                            onClick = { showGoogleSelector = false },
+                            modifier = Modifier.align(Alignment.End)
+                        ) {
+                            Text("Cancel", color = Color.Gray)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun DrawerContent(
+    viewModel: WealthViewModel,
+    navController: NavController,
+    drawerState: DrawerState,
+    scope: kotlinx.coroutines.CoroutineScope
+) {
+    val isDark by viewModel.isDarkMode.collectAsStateWithLifecycle()
+    val username by viewModel.googleUserName.collectAsStateWithLifecycle()
+    val userEmail by viewModel.googleUserEmail.collectAsStateWithLifecycle()
+    var showEditNameDialog by remember { mutableStateOf(false) }
+    var newTempName by remember { mutableStateOf("") }
+    val currentRoute = navController.currentBackStackEntryFlow.collectAsState(initial = null).value?.destination?.route
+
+    Column(
+        modifier = Modifier
+            .fillMaxHeight()
+            .width(280.dp)
+            .background(if (isDark) Color(0xFF090F0D) else Color(0xFFEFF3F1))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            // Profile Card Section
+            SkeuomorphicCard(
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                isDark = isDark
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(60.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.linearGradient(
+                                    listOf(Color(0xFFFBBF24), Color(0xFFD97706))
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (username.isNotEmpty()) username.take(2).uppercase() else "EG",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 20.sp,
+                            color = Color(0xFF111917)
+                        )
+                    }
+
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = username,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                color = if (isDark) Color(0xFFE4F0EC) else Color(0xFF0E1915),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            IconButton(
+                                onClick = {
+                                    newTempName = username
+                                    showEditNameDialog = true
+                                },
+                                modifier = Modifier.size(18.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Edit,
+                                    contentDescription = "Edit name",
+                                    tint = if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309),
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
+                        }
+                        val emailStr = userEmail
+                        if (emailStr != null) {
+                            Text(
+                                text = emailStr,
+                                fontSize = 11.sp,
+                                color = if (isDark) Color(0xFF90A49E) else Color(0xFF4C5D55)
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "NAVIGATION PORTAL",
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (isDark) Color(0xFF90A49E) else Color(0xFF3B524B),
+                modifier = Modifier.padding(horizontal = 8.dp)
+            )
+
+            // Nav Items List
+            val items = listOf(
+                NavigationItem("Dashboard", Routes.DASHBOARD, Icons.Default.Home),
+                NavigationItem("Reports & Budgets", Routes.REPORTS, Icons.Default.Star),
+                NavigationItem("Vaults & Accounts", Routes.ACCOUNTS, Icons.Default.Lock),
+                NavigationItem("Installments & Debts", Routes.EMIS, Icons.Default.KeyboardArrowUp),
+                NavigationItem("Settings", Routes.SETTINGS, Icons.Default.Settings)
+            )
+
+            items.forEach { item ->
+                val selected = currentRoute == item.route
+                SkeuomorphicButton(
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        if (currentRoute != item.route) {
+                            navController.navigate(item.route) {
+                                popUpTo(Routes.DASHBOARD) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    isDark = isDark,
+                    isSelected = selected
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Start
+                    ) {
+                        Icon(
+                            item.icon,
+                            contentDescription = item.title,
+                            tint = if (selected) {
+                                if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
+                            } else {
+                                if (isDark) Color(0xFF90A49E) else Color(0xFF4C5D55)
+                            },
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = item.title,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                            fontSize = 13.sp,
+                            color = if (selected) {
+                                if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
+                            } else {
+                                if (isDark) Color(0xFFE4F0EC) else Color(0xFF0E1915)
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
+        // Logout Section
+        SkeuomorphicButton(
+            onClick = {
+                scope.launch { drawerState.close() }
+                viewModel.logoutGoogle()
+            },
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+            isDark = isDark
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Start
+            ) {
+                Icon(
+                    Icons.Default.ExitToApp,
+                    contentDescription = "Log Out",
+                    tint = if (isDark) Color(0xFFEF4444) else Color(0xFFDC2626)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "Sign Out Google Acc",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp,
+                    color = if (isDark) Color(0xFFEF4444) else Color(0xFFDC2626)
+                )
+            }
+        }
+    }
+
+    // Edit Name Dialogue popup
+    if (showEditNameDialog) {
+        Dialog(onDismissRequest = { showEditNameDialog = false }) {
+            Box(
+                modifier = Modifier
+                    .width(320.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(if (isDark) Color(0xFF111917) else Color(0xFFF1F5F3))
+            ) {
+                Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text(
+                        text = "Edit Active Name",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
+                    )
+
+                    SkeuomorphicTextField(
+                        value = newTempName,
+                        onValueChange = { newTempName = it },
+                        placeholder = { Text("Display Name") },
+                        isDark = isDark,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        SkeuomorphicButton(
+                            onClick = { showEditNameDialog = false },
+                            isDark = isDark,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Cancel", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        SkeuomorphicButton(
+                            onClick = {
+                                if (newTempName.isNotBlank()) {
+                                    viewModel.updateUsername(newTempName)
+                                    showEditNameDialog = false
+                                }
+                            },
+                            isDark = isDark,
+                            isSelected = true,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                "Confirm",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isDark) Color(0xFF111917) else Color.White
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AppNavigation(viewModel: WealthViewModel) {
+    val isGoogleLoggedIn by viewModel.isGoogleLoggedIn.collectAsStateWithLifecycle()
+
+    if (!isGoogleLoggedIn) {
+        LoginScreen(viewModel = viewModel)
+    } else {
+        val navController = rememberNavController()
+        val isDarkMode by viewModel.isDarkMode.collectAsStateWithLifecycle()
+        val savedPin by viewModel.savedPin.collectAsStateWithLifecycle()
+        val isAppLocked by viewModel.isAppLocked.collectAsStateWithLifecycle()
+
+        var showPinInputState by remember { mutableStateOf(isAppLocked) }
+        var enteredPin by remember { mutableStateOf("") }
+
+        val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+        val coroutineScope = rememberCoroutineScope()
+
+        // Enforce lock overlay
+        LaunchedEffect(isAppLocked) {
+            showPinInputState = isAppLocked && savedPin != null
+        }
+
+        ModalNavigationDrawer(
+            drawerState = drawerState,
+            drawerContent = {
+                DrawerContent(
+                    viewModel = viewModel,
+                    navController = navController,
+                    drawerState = drawerState,
+                    scope = coroutineScope
+                )
+            }
+        ) {
+            Scaffold(
+                bottomBar = {
+                    if (!showPinInputState) {
+                        BottomNavBar(navController)
+                    }
+                }
+            ) { paddingValues ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                ) {
+                    if (showPinInputState) {
+                        // PIN Lock Overlay Screen
+                        PinLockScreen(
+                            enteredPin = enteredPin,
+                            onNumberClick = { num ->
+                                if (enteredPin.length < 4) {
+                                    enteredPin += num
+                                    if (enteredPin.length == 4) {
+                                        if (viewModel.unlockApp(enteredPin)) {
+                                            showPinInputState = false
+                                        } else {
+                                            enteredPin = "" // reset
+                                        }
+                                    }
+                                }
+                            },
+                            onDeleteClick = {
+                                if (enteredPin.isNotEmpty()) {
+                                    enteredPin = enteredPin.dropLast(1)
+                                }
+                            }
+                        )
+                    } else {
+                        NavHost(
+                            navController = navController,
+                            startDestination = Routes.DASHBOARD
+                        ) {
+                            composable(Routes.DASHBOARD) {
+                                DashboardScreen(
+                                    viewModel = viewModel,
+                                    navController = navController,
+                                    onOpenDrawer = { coroutineScope.launch { drawerState.open() } }
+                                )
+                            }
+                            composable(Routes.ADD_TRANSACTION) {
+                                AddTransactionScreen(viewModel, navController)
+                            }
+                            composable(Routes.ACCOUNTS) {
+                                AccountsScreen(
+                                    viewModel = viewModel,
+                                    navController = navController,
+                                    onOpenDrawer = { coroutineScope.launch { drawerState.open() } }
+                                )
+                            }
+                            composable(Routes.CATEGORIES) {
+                                CategoriesScreen(viewModel, navController)
+                            }
+                            composable(Routes.REPORTS) {
+                                ReportsScreen(
+                                    viewModel = viewModel,
+                                    navController = navController,
+                                    onOpenDrawer = { coroutineScope.launch { drawerState.open() } }
+                                )
+                            }
+                            composable(Routes.BUDGETS) {
+                                BudgetScreen(viewModel, navController)
+                            }
+                            composable(Routes.NOTIFICATIONS) {
+                                NotificationsScreen(viewModel, navController)
+                            }
+                            composable(Routes.SETTINGS) {
+                                SettingsScreen(
+                                    viewModel = viewModel,
+                                    navController = navController,
+                                    onOpenDrawer = { coroutineScope.launch { drawerState.open() } }
+                                )
+                            }
+                            composable(Routes.EMIS) {
+                                EMIScreen(
+                                    viewModel = viewModel,
+                                    navController = navController,
+                                    onOpenDrawer = { coroutineScope.launch { drawerState.open() } }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun BottomNavBar(navController: NavController) {
+    val currentRoute = navController.currentBackStackEntryFlow.collectAsState(initial = null).value?.destination?.route
+
+    NavigationBar(
+        tonalElevation = 8.dp,
+        modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars)
+    ) {
+        val items = listOf(
+            NavigationItem("Dashboard", Routes.DASHBOARD, Icons.Default.Home),
+            NavigationItem("Reports", Routes.REPORTS, Icons.Default.Star),
+            NavigationItem("Vaults", Routes.ACCOUNTS, Icons.Default.Lock),
+            NavigationItem("EMIs", Routes.EMIS, Icons.Default.KeyboardArrowUp),
+            NavigationItem("Settings", Routes.SETTINGS, Icons.Default.Settings)
+        )
+
+        items.forEach { item ->
+            val selected = currentRoute == item.route
+            NavigationBarItem(
+                selected = selected,
+                onClick = {
+                    if (currentRoute != item.route) {
+                        navController.navigate(item.route) {
+                            popUpTo(Routes.DASHBOARD) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                },
+                icon = { Icon(item.icon, contentDescription = item.title) },
+                label = { Text(item.title, fontSize = 10.sp) },
+                modifier = Modifier.testTag("nav_tab_${item.route}")
+            )
+        }
+    }
+}
+
+data class NavigationItem(val title: String, val route: String, val icon: ImageVector)
+
+// PIN Lock Interface
+@Composable
+fun PinLockScreen(
+    enteredPin: String,
+    onNumberClick: (String) -> Unit,
+    onDeleteClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF003527)) // Premium Emerald Dark background
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.Lock,
+            contentDescription = "App Locked",
+            tint = Color(0xFF80BEA6),
+            modifier = Modifier.size(64.dp)
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        Text(
+            text = "CashFlow Vault Protected",
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            fontSize = 22.sp
+        )
+        Text(
+            text = "Enter 4-digit PIN to Unlock",
+            color = Color(0xFF80BEA6),
+            fontSize = 14.sp
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Dots indicating entry
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.padding(16.dp)
+        ) {
+            for (i in 1..4) {
+                val filled = enteredPin.length >= i
+                Box(
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clip(CircleShape)
+                        .background(if (filled) Color.White else Color(0xFF0B513D))
+                        .border(1.5.dp, Color(0xFF80BEA6), CircleShape)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(48.dp))
+
+        // Grid of numbers
+        val numbers = listOf(
+            listOf("1", "2", "3"),
+            listOf("4", "5", "6"),
+            listOf("7", "8", "9"),
+            listOf("", "0", "DEL")
+        )
+
+        Column(
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            numbers.forEach { row ->
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(24.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    row.forEach { char ->
+                        if (char.isEmpty()) {
+                            Spacer(modifier = Modifier.size(72.dp))
+                        } else {
+                            Button(
+                                onClick = {
+                                    if (char == "DEL") onDeleteClick() else onNumberClick(char)
+                                },
+                                modifier = Modifier
+                                    .size(72.dp)
+                                    .testTag("pin_${char}"),
+                                shape = CircleShape,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFF064E3B),
+                                    contentColor = Color.White
+                                )
+                            ) {
+                                Text(char, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// 1. Dashboard Screen
+@Composable
+fun NotificationsScreen(viewModel: WealthViewModel, navController: NavController) {
+    val isDark by viewModel.isDarkMode.collectAsStateWithLifecycle()
+    // For demonstration, these are the local alerts history
+    val notifications = remember {
+        listOf(
+            "EMI Payment for Car Loan due on the 10th",
+            "Debt Repayment due for 'John Doe' on the 15th",
+            "Security Alert: Google Authentication successful",
+            "Your Net Worth increased by 5% this month!"
+        )
+    }
+
+    Scaffold(
+        topBar = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.background)
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = { navController.navigateUp() }) {
+                    Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onBackground)
+                }
+                Text(
+                    "Notifications",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.padding(start = 8.dp)
+                )
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.background
+    ) { paddingVals ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingVals)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(notifications) { notif ->
+                Card(
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Notifications,
+                            contentDescription = "Alert",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(
+                            text = notif,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun DashboardScreen(
+    viewModel: WealthViewModel,
+    navController: NavController,
+    onOpenDrawer: () -> Unit
+) {
+    val accounts by viewModel.accounts.collectAsStateWithLifecycle()
+    val transactions by viewModel.transactions.collectAsStateWithLifecycle()
+    val categories by viewModel.categories.collectAsStateWithLifecycle()
+    val insights by viewModel.smartInsights.collectAsStateWithLifecycle()
+    val currency by viewModel.currency.collectAsStateWithLifecycle()
+    val isDark by viewModel.isDarkMode.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
+    var inspectingTransaction by remember { mutableStateOf<TransactionEntity?>(null) }
+
+    // Aggregate values
+    val netWorth = accounts.sumOf { it.balance }
+    val totalIncome = transactions.filter { it.type == "Income" }.sumOf { it.amount }
+    val totalExpense = transactions.filter { it.type == "Expense" }.sumOf { it.amount }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        // Top Header
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .clickable { onOpenDrawer() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.Menu, contentDescription = "Menu", tint = MaterialTheme.colorScheme.primary)
+                    }
+                    Text(
+                        text = "CashFlow",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    IconButton(onClick = { navController.navigate(Routes.NOTIFICATIONS) }) {
+                        Icon(Icons.Default.Notifications, contentDescription = "Notifications", tint = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            }
+        }
+
+        // Net Worth Card (Hero style)
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("net_worth_card"),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Box(modifier = Modifier.padding(24.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("TOTAL NET WORTH", color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text("$currency ${String.format(Locale.getDefault(), "%,.2f", netWorth)}", color = MaterialTheme.colorScheme.onPrimary, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Divider(color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f))
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Column {
+                                Text("Income", color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f), fontSize = 11.sp)
+                                Text("$currency ${String.format(Locale.getDefault(), "%,.1f", totalIncome)}", color = MaterialTheme.colorScheme.onPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text("Expense", color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f), fontSize = 11.sp)
+                                Text("$currency ${String.format(Locale.getDefault(), "%,.1f", totalExpense)}", color = MaterialTheme.colorScheme.onPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Quick Insights Title
+        item {
+            Text("Quick Insights", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+        }
+
+        // Insights Carousel
+        item {
+            if (insights.isEmpty()) {
+                Text("No spending pattern detected yet.", color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f), fontSize = 13.sp)
+            } else {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(insights) { insight ->
+                        Card(
+                            modifier = Modifier
+                                .width(260.dp)
+                                .testTag("insight_card"),
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, parseHexColor(insight.color).copy(alpha = 0.4f)),
+                            colors = CardDefaults.cardColors(containerColor = parseHexColor(insight.color).copy(alpha = 0.1f))
+                        ) {
+                            Row(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .background(parseHexColor(insight.color).copy(alpha = 0.2f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        IconsUtil.getIcon(insight.iconType),
+                                        contentDescription = insight.title,
+                                        tint = parseHexColor(insight.color)
+                                    )
+                                }
+                                Column {
+                                    Text(insight.title, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                    Text(insight.description, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 16.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Recent Transactions Title & Button
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Recent Transactions", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+                TextButton(onClick = { navController.navigate(Routes.CATEGORIES) }) {
+                    Text("See All", color = MaterialTheme.colorScheme.primary)
+                }
+            }
+        }
+
+        // Recent Transactions List
+        if (transactions.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(Icons.Default.List, contentDescription = "No trans", tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f), modifier = Modifier.size(48.dp))
+                        Text("No transactions logged yet", color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f), fontSize = 14.sp)
+                    }
+                }
+            }
+        } else {
+            items(transactions.take(10)) { tx ->
+                val category = categories.find { it.id == tx.categoryId }
+                SkeuomorphicCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(92.dp)
+                        .clickable { inspectingTransaction = tx }
+                        .testTag("transaction_item_${tx.id}"),
+                    isDark = isDark
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (category != null) parseHexColor(category.color).copy(alpha = 0.15f)
+                                        else MaterialTheme.colorScheme.surfaceVariant
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    IconsUtil.getIcon(category?.icon ?: "receipt"),
+                                    contentDescription = category?.name,
+                                    tint = if (category != null) parseHexColor(category.color) else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Column {
+                                Text(
+                                    text = category?.name ?: tx.type,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = if (tx.note.isNotEmpty()) tx.note else "Transaction id: ${tx.id}",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            val sign = when (tx.type) {
+                                "Income" -> "+"
+                                "Expense" -> "-"
+                                else -> ""
+                            }
+                            val color = when (tx.type) {
+                                "Income" -> Color(0xFF10B981)
+                                "Expense" -> MaterialTheme.colorScheme.error
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                            Text(
+                                text = "$sign $currency ${tx.amount}",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = color
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Extra spacing at the bottom
+        item {
+            Spacer(modifier = Modifier.height(80.dp))
+        }
+    }
+
+    // Centered FAB for Adding Transaction (Quick entry)
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        contentAlignment = Alignment.BottomEnd
+    ) {
+        FloatingActionButton(
+            onClick = { navController.navigate(Routes.ADD_TRANSACTION) },
+            containerColor = Color(0xFF003527),
+            contentColor = Color.White,
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.testTag("add_transaction_fab")
+        ) {
+            Icon(Icons.Default.Add, contentDescription = "Add Transaction")
+        }
+    }
+
+    // Interactive Tactile Transaction Inspector & Live Editor dialog
+    inspectingTransaction?.let { tx ->
+        var isEditing by remember { mutableStateOf(false) }
+
+        var editType by remember { mutableStateOf(tx.type) }
+        var editAmount by remember { mutableStateOf(tx.amount.toString()) }
+        var editNote by remember { mutableStateOf(tx.note) }
+        var editSelectedCategory by remember { mutableStateOf(categories.find { it.id == tx.categoryId }) }
+        var editSelectedAccount by remember { mutableStateOf(accounts.find { it.id == tx.accountId }) }
+        var editSelectedToAccount by remember { mutableStateOf(accounts.find { it.id == tx.transferToAccountId }) }
+
+        // Sync states when target transaction shifts
+        LaunchedEffect(tx) {
+            isEditing = false
+            editType = tx.type
+            editAmount = tx.amount.toString()
+            editNote = tx.note
+            editSelectedCategory = categories.find { it.id == tx.categoryId }
+            editSelectedAccount = accounts.find { it.id == tx.accountId }
+            editSelectedToAccount = accounts.find { it.id == tx.transferToAccountId }
+        }
+
+        Dialog(onDismissRequest = { inspectingTransaction = null }) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                shape = RoundedCornerShape(24.dp),
+                color = if (isDark) Color(0xFF101815) else Color.White
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    if (!isEditing) {
+                        // MODE 1: DETAIL INSPECTION VIEW
+                        Row(
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "Transaction Inspector",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Black,
+                                color = if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
+                            )
+                            IconButton(onClick = { inspectingTransaction = null }) {
+                                Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.Gray)
+                            }
+                        }
+
+                        // Hero Header with Category Icon / Emoji representation
+                        val txCat = categories.find { it.id == tx.categoryId }
+                        SkeuomorphicCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            isDark = isDark
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(52.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            if (txCat != null) parseHexColor(txCat.color).copy(alpha = 0.15f)
+                                            else Color.Gray.copy(alpha = 0.15f)
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        IconsUtil.getIcon(txCat?.icon ?: "receipt"),
+                                        contentDescription = null,
+                                        tint = if (txCat != null) parseHexColor(txCat.color) else Color.Gray,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                                Column {
+                                    Text(
+                                        text = txCat?.name ?: if (tx.type == "Transfer") "Bank Transfer ⇆" else tx.type,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 18.sp,
+                                        color = if (isDark) Color(0xFFE4F0EC) else Color(0xFF0E1915)
+                                    )
+                                    Text(
+                                        text = "Active Channel: ${tx.type}",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = if (isDark) Color(0xFF90A49E) else Color(0xFF4C5D55)
+                                    )
+                                }
+                            }
+                        }
+
+                        // Ledger Metrics Area
+                        SkeuomorphicCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            isDark = isDark
+                        ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Text(
+                                    text = "AMOUNT & SOURCE DETAILS",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isDark) Color(0xFF90A49E) else Color(0xFF4C5D55)
+                                )
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Ledger Outflow/Inflow:",
+                                        fontSize = 13.sp,
+                                        color = if (isDark) Color(0xFF90A49E) else Color(0xFF4C5D55)
+                                    )
+                                    val sign = when (tx.type) {
+                                        "Income" -> "+"
+                                        "Expense" -> "-"
+                                        else -> ""
+                                    }
+                                    val amtColor = when (tx.type) {
+                                        "Income" -> Color(0xFF10B981)
+                                        "Expense" -> Color.Red
+                                        else -> if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
+                                    }
+                                    Text(
+                                        text = "$sign $currency ${String.format("%.2f", tx.amount)}",
+                                        fontWeight = FontWeight.Black,
+                                        fontSize = 20.sp,
+                                        color = amtColor
+                                    )
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = "Vault Account / Wallet:",
+                                        fontSize = 13.sp,
+                                        color = if (isDark) Color(0xFF90A49E) else Color(0xFF4C5D55)
+                                    )
+                                    val actSource = accounts.find { it.id == tx.accountId }
+                                    Text(
+                                        text = actSource?.name ?: "Unknown Wallet",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp,
+                                        color = if (isDark) Color(0xFFE4F0EC) else Color(0xFF0E1915)
+                                    )
+                                }
+
+                                if (tx.type == "Transfer") {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = "Transfer Recipient Wallet:",
+                                            fontSize = 13.sp,
+                                            color = if (isDark) Color(0xFF90A49E) else Color(0xFF4C5D55)
+                                        )
+                                        val actDest = accounts.find { it.id == tx.transferToAccountId }
+                                        Text(
+                                            text = actDest?.name ?: "Unknown Target Wallet",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 13.sp,
+                                            color = if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
+                                        )
+                                    }
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = "Transaction Timestamp:",
+                                        fontSize = 13.sp,
+                                        color = if (isDark) Color(0xFF90A49E) else Color(0xFF4C5D55)
+                                    )
+                                    val dateStr = java.text.SimpleDateFormat("MMM dd, yyyy - HH:mm", java.util.Locale.getDefault())
+                                        .format(java.util.Date(tx.date))
+                                    Text(
+                                        text = dateStr,
+                                        fontWeight = FontWeight.Medium,
+                                        fontSize = 13.sp,
+                                        color = if (isDark) Color(0xFFE4F0EC) else Color(0xFF0E1915)
+                                    )
+                                }
+                            }
+                        }
+
+                        // Transaction note if configured
+                        if (tx.note.isNotBlank()) {
+                            SkeuomorphicCard(
+                                modifier = Modifier.fillMaxWidth(),
+                                isDark = isDark
+                            ) {
+                                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Text(
+                                        text = "LEDGER MEMO / NOTES",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isDark) Color(0xFF90A49E) else Color(0xFF4C5D55)
+                                    )
+                                    Text(
+                                        text = tx.note,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = if (isDark) Color(0xFFE4F0EC) else Color(0xFF0E1915)
+                                    )
+                                }
+                            }
+                        }
+
+                        // Receipt Image Display
+                        if (tx.imagePath != null) {
+                            SkeuomorphicCard(
+                                modifier = Modifier.fillMaxWidth(),
+                                isDark = isDark
+                            ) {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text(
+                                        text = "ATTACHED RECEIPT",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
+                                    )
+                                    AsyncImage(
+                                        model = tx.imagePath,
+                                        contentDescription = "Receipt photo",
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(200.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(Color.Black.copy(alpha = 0.05f)),
+                                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                    )
+                                }
+                            }
+                        }
+
+                        // Repayment Control Board Row (Delete / Edit commands)
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            SkeuomorphicButton(
+                                onClick = {
+                                    viewModel.deleteTransaction(tx)
+                                    Toast.makeText(context, "Transaction deleted successfully!", Toast.LENGTH_SHORT).show()
+                                    inspectingTransaction = null
+                                },
+                                isDark = isDark,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red, modifier = Modifier.size(16.dp))
+                                    Text("Delete", fontWeight = FontWeight.Bold, color = Color.Red, fontSize = 13.sp)
+                                }
+                            }
+
+                            SkeuomorphicButton(
+                                onClick = { isEditing = true },
+                                isDark = isDark,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.Edit, contentDescription = "Edit", tint = if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309), modifier = Modifier.size(16.dp))
+                                    Text("Edit Live", fontWeight = FontWeight.Bold, color = if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309), fontSize = 13.sp)
+                                }
+                            }
+                        }
+
+                    } else {
+                        // MODE 2: EDIT TRANSACTION FORM INLINE
+                        Text(
+                            text = "Edit Transaction Log",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Black,
+                            color = if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
+                        )
+
+                        // Segmented Tab picker for active log type
+                        SkeuomorphicCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            isDark = isDark,
+                            shape = RoundedCornerShape(32.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                listOf("Income", "Expense", "Transfer").forEach { tab ->
+                                    val active = editType == tab
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(34.dp)
+                                            .clip(RoundedCornerShape(24.dp))
+                                            .background(
+                                                if (active) {
+                                                    if (isDark) Color(0xFF2A3935) else Color.White
+                                                } else Color.Transparent
+                                            )
+                                            .clickable {
+                                                editType = tab
+                                                if (tab != "Transfer") {
+                                                    editSelectedCategory = categories.firstOrNull { it.type == tab }
+                                                }
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = tab,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 12.sp,
+                                            color = if (active) {
+                                                if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
+                                            } else {
+                                                if (isDark) Color(0xFF90A49E) else Color(0xFF4C5D55)
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Amount editor
+                        SkeuomorphicTextField(
+                            value = editAmount,
+                            onValueChange = { editAmount = it },
+                            label = { Text("Log Amount ($currency)") },
+                            isDark = isDark,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        )
+
+                        // Note memo editor
+                        SkeuomorphicTextField(
+                            value = editNote,
+                            onValueChange = { editNote = it },
+                            label = { Text("Memo Notes") },
+                            isDark = isDark
+                        )
+
+                        // Source Wallet Account selection
+                        Text(
+                            text = "Debit/Source Account:",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isDark) Color(0xFF90A49E) else Color(0xFF4C5D55)
+                        )
+                        Row(
+                            modifier = Modifier.horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            accounts.forEach { acc ->
+                                val selected = editSelectedAccount?.id == acc.id
+                                SkeuomorphicButton(
+                                    onClick = { editSelectedAccount = acc },
+                                    isDark = isDark,
+                                    isSelected = selected,
+                                    modifier = Modifier.widthIn(min = 90.dp)
+                                ) {
+                                    Text(
+                                        text = acc.name,
+                                        fontSize = 12.sp,
+                                        color = if (selected) {
+                                            if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
+                                        } else {
+                                            if (isDark) Color(0xFF90A49E) else Color(0xFF4C5D55)
+                                        }
+                                    )
+                                }
+                            }
+                        }
+
+                        if (editType == "Transfer") {
+                            // Target account selection (specifically for transfers)
+                            Text(
+                                text = "Transfer Destination Account:",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isDark) Color(0xFF90A49E) else Color(0xFF4C5D55)
+                            )
+                            Row(
+                                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                accounts.forEach { acc ->
+                                    val selected = editSelectedToAccount?.id == acc.id
+                                    SkeuomorphicButton(
+                                        onClick = { editSelectedToAccount = acc },
+                                        isDark = isDark,
+                                        isSelected = selected,
+                                        modifier = Modifier.widthIn(min = 90.dp)
+                                    ) {
+                                        Text(
+                                            text = acc.name,
+                                            fontSize = 12.sp,
+                                            color = if (selected) {
+                                                if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
+                                            } else {
+                                                if (isDark) Color(0xFF90A49E) else Color(0xFF4C5D55)
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            // Category selection row for Income / Expense
+                            Text(
+                                text = "Associate Category:",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isDark) Color(0xFF90A49E) else Color(0xFF4C5D55)
+                            )
+                            Row(
+                                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                categories.filter { it.type == editType }.forEach { cat ->
+                                    val selected = editSelectedCategory?.id == cat.id
+                                    SkeuomorphicButton(
+                                        onClick = { editSelectedCategory = cat },
+                                        isDark = isDark,
+                                        isSelected = selected,
+                                        modifier = Modifier.widthIn(min = 90.dp)
+                                    ) {
+                                        Text(
+                                            text = "${cat.icon} ${cat.name}",
+                                            fontSize = 11.sp,
+                                            color = if (selected) {
+                                                if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
+                                            } else {
+                                                if (isDark) Color(0xFF90A49E) else Color(0xFF4C5D55)
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Submit changes / Back actions
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            TextButton(
+                                onClick = { isEditing = false },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Back View", color = Color.Gray)
+                            }
+
+                            SkeuomorphicButton(
+                                onClick = {
+                                    val parsedAmt = editAmount.toDoubleOrNull()
+                                    if (parsedAmt != null && parsedAmt > 0 && editSelectedAccount != null) {
+                                        val updatedTx = tx.copy(
+                                            amount = parsedAmt,
+                                            type = editType,
+                                            note = editNote,
+                                            accountId = editSelectedAccount!!.id,
+                                            categoryId = if (editType == "Transfer") null else editSelectedCategory?.id,
+                                            transferToAccountId = if (editType == "Transfer") editSelectedToAccount?.id else null
+                                        )
+                                        viewModel.updateTransaction(updatedTx)
+                                        Toast.makeText(context, "Changes saved successfully!", Toast.LENGTH_SHORT).show()
+                                        inspectingTransaction = null
+                                    } else {
+                                        Toast.makeText(context, "Please configure valid amount & accounts", Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                                isDark = isDark,
+                                modifier = Modifier.weight(1.5f)
+                            ) {
+                                Text("Save Change", fontWeight = FontWeight.Bold, color = if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// 2. Add Transaction Screen (Screenshot 1 matching form exactly)
+@Composable
+fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavController) {
+    val accounts by viewModel.accounts.collectAsStateWithLifecycle()
+    val categories by viewModel.categories.collectAsStateWithLifecycle()
+    val globalCurrency by viewModel.currency.collectAsStateWithLifecycle()
+    val isDark by viewModel.isDarkMode.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
+    var type by remember { mutableStateOf("Expense") } // "Income", "Expense", "Transfer", "Debt"
+    var amount by remember { mutableStateOf("") }
+    var note by remember { mutableStateOf("") }
+
+    var imagePathState by remember { mutableStateOf<String?>(null) }
+    val receiptLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            imagePathState = uri.toString()
+        }
+    }
+
+
+
+    var selectedDateEpochMillis by remember { mutableStateOf(System.currentTimeMillis()) }
+
+    var selectedCategory by remember { mutableStateOf<CategoryEntity?>(null) }
+    var selectedAccount by remember { mutableStateOf<AccountEntity?>(null) }
+    var selectedToAccount by remember { mutableStateOf<AccountEntity?>(null) } // for Transfer
+
+    var showCategoryDialog by remember { mutableStateOf(false) }
+    var showAccountDialog by remember { mutableStateOf(false) }
+    var showToAccountDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(categories, accounts, type) {
+        if (selectedCategory == null && categories.isNotEmpty()) {
+            selectedCategory = categories.firstOrNull { it.type == type } ?: categories.firstOrNull { it.type == "Expense" } ?: categories.first()
+        }
+        if (selectedAccount == null && accounts.isNotEmpty()) {
+            selectedAccount = accounts.firstOrNull()
+        }
+        if (selectedToAccount == null && accounts.size > 1) {
+            selectedToAccount = accounts.getOrNull(1)
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(if (isDark) Color(0xFF0C1311) else Color(0xFFEFF3F1))
+                    .padding(horizontal = 12.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = { navController.popBackStack() }) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Close",
+                        tint = if (isDark) Color(0xFF90A49E) else Color(0xFF3B524B)
+                    )
+                }
+                Text(
+                    text = "Add Transaction",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isDark) Color(0xFF34D399) else Color(0xFF003527)
+                )
+                Spacer(modifier = Modifier.width(48.dp))
+            }
+        },
+        bottomBar = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(if (isDark) Color(0xFF0C1311) else Color(0xFFEFF3F1))
+                    .padding(16.dp)
+            ) {
+                SkeuomorphicButton(
+                    onClick = {
+                        val parsedAmount = amount.toDoubleOrNull()
+                        if (parsedAmount != null && parsedAmount > 0 && selectedAccount != null) {
+                            // Regular transaction logging
+                            viewModel.addTransaction(
+                                amount = parsedAmount,
+                                type = type,
+                                categoryId = if (type == "Transfer") null else selectedCategory?.id,
+                                accountId = selectedAccount!!.id,
+                                transferToAccountId = if (type == "Transfer") selectedToAccount?.id else null,
+                                date = selectedDateEpochMillis,
+                                note = note,
+                                imagePath = imagePathState
+                            )
+                            navController.popBackStack()
+                        } else {
+                            Toast.makeText(context, "Please enter a valid amount and choose an account", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp)
+                        .testTag("submit_button"),
+                    isDark = isDark
+                ) {
+                    Text(
+                        text = "Save Transaction",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
+                    )
+                }
+            }
+        },
+        containerColor = if (isDark) Color(0xFF080F0D) else Color(0xFFF4F8F6)
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Segmented Tab bar using physical/skeuomorphic finish
+            SkeuomorphicCard(
+                modifier = Modifier.fillMaxWidth(),
+                isDark = isDark,
+                shape = RoundedCornerShape(32.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val tabs = listOf("Income", "Expense", "Transfer")
+                    tabs.forEach { tab ->
+                        val isSelected = type == tab
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(38.dp)
+                                .clip(RoundedCornerShape(24.dp))
+                                .background(
+                                    if (isSelected) {
+                                        if (isDark) Color(0xFF2A3935) else Color.White
+                                    } else Color.Transparent
+                                )
+                                .clickable {
+                                    type = tab
+                                    if (tab != "Transfer") {
+                                        selectedCategory = categories.firstOrNull { it.type == tab }
+                                    }
+                                }
+                                .testTag("type_tab_${tab}"),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = tab,
+                                color = if (isSelected) {
+                                    if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
+                                } else {
+                                    if (isDark) Color(0xFF90A49E) else Color(0xFF3B524B)
+                                },
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Amount Box - Embossed Card
+            SkeuomorphicCard(
+                modifier = Modifier.fillMaxWidth(),
+                isDark = isDark
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "AMOUNTS / BALANCE",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isDark) Color(0xFF90A49E) else Color(0xFF3B524B)
+                    )
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = globalCurrency,
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Black,
+                            color = if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309),
+                            modifier = Modifier.padding(end = 6.dp)
+                        )
+                        BasicTextField(
+                            value = amount,
+                            onValueChange = { amount = it },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier
+                                .width(180.dp)
+                                .testTag("amount_input"),
+                            textStyle = androidx.compose.ui.text.TextStyle(
+                                fontSize = 36.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isDark) Color(0xFFE4F0EC) else Color(0xFF0E1915),
+                                textAlign = TextAlign.Center
+                            ),
+                            cursorBrush = SolidColor(if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309))
+                        )
+                    }
+                }
+            }
+
+            // Regular/Common Fields Section
+            SkeuomorphicCard(
+                modifier = Modifier.fillMaxWidth(),
+                isDark = isDark
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Text(
+                        text = "TRANSACTION LEDGER DETAILS",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
+                    )
+
+                    // Category Selection (only for Income, Expense)
+                    if (type != "Transfer") {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { showCategoryDialog = true }
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(42.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            if (selectedCategory != null) parseHexColor(selectedCategory!!.color).copy(alpha = 0.15f)
+                                            else (if (isDark) Color(0xFF1E2F29) else Color(0xFFEFF4FF))
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        IconsUtil.getIcon(selectedCategory?.icon ?: "restaurant"),
+                                        contentDescription = null,
+                                        tint = if (selectedCategory != null) parseHexColor(selectedCategory!!.color) else (if (isDark) Color(0xFF34D399) else Color(0xFF003527))
+                                    )
+                                }
+                                Column {
+                                    Text(
+                                        "Category",
+                                        fontSize = 11.sp,
+                                        color = if (isDark) Color(0xFF90A49E) else Color(0xFF3B524B)
+                                    )
+                                    Text(
+                                        selectedCategory?.name ?: "Select Category",
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isDark) Color(0xFFE4F0EC) else Color(0xFF0E1915)
+                                    )
+                                }
+                            }
+                            Icon(
+                                Icons.Default.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = if (isDark) Color(0xFF90A49E) else Color(0xFF3B524B)
+                            )
+                        }
+                    }
+
+                    // Source Account Card for adding payments/sources
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showAccountDialog = true }
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(42.dp)
+                                    .clip(CircleShape)
+                                    .background(if (isDark) Color(0xFF23352F) else Color(0xFFE2EBE8)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    IconsUtil.getIcon("account_balance"),
+                                    contentDescription = null,
+                                    tint = if (isDark) Color(0xFF34D399) else Color(0xFF003527)
+                                )
+                            }
+                            Column {
+                                Text(
+                                    if (type == "Transfer") "From Account" else "Account",
+                                    fontSize = 11.sp,
+                                    color = if (isDark) Color(0xFF90A49E) else Color(0xFF3B524B)
+                                )
+                                Text(
+                                    selectedAccount?.name ?: "Choose Account",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isDark) Color(0xFFE4F0EC) else Color(0xFF0E1915)
+                                )
+                            }
+                        }
+                        Icon(
+                            Icons.Default.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = if (isDark) Color(0xFF90A49E) else Color(0xFF3B524B)
+                        )
+                    }
+
+                    // Destination Account for Transfers
+                    if (type == "Transfer") {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { showToAccountDialog = true }
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(42.dp)
+                                        .clip(CircleShape)
+                                        .background(if (isDark) Color(0xFF1B312A) else Color(0xFFE6F3EE)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        IconsUtil.getIcon("account_balance"),
+                                        contentDescription = null,
+                                        tint = if (isDark) Color(0xFF10B981) else Color(0xFF10B981)
+                                    )
+                                }
+                                Column {
+                                    Text(
+                                        "To Account",
+                                        fontSize = 11.sp,
+                                        color = if (isDark) Color(0xFF90A49E) else Color(0xFF3B524B)
+                                    )
+                                    Text(
+                                        selectedToAccount?.name ?: "Select Destination",
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isDark) Color(0xFFE4F0EC) else Color(0xFF0E1915)
+                                    )
+                                }
+                            }
+                            Icon(
+                                Icons.Default.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = if (isDark) Color(0xFF90A49E) else Color(0xFF3B524B)
+                            )
+                        }
+                    }
+
+                    // REAL Date & Time Picker selection
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                showAndroidDatePicker(context, selectedDateEpochMillis) {
+                                    selectedDateEpochMillis = it
+                                }
+                            }
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(42.dp)
+                                    .clip(CircleShape)
+                                    .background(if (isDark) Color(0xFF1D2F29) else Color(0xFFEBF0EE)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.DateRange,
+                                    contentDescription = null,
+                                    tint = if (isDark) Color(0xFF34D399) else Color(0xFF003527)
+                                )
+                            }
+                            Column {
+                                Text(
+                                    "Date & Period",
+                                    fontSize = 11.sp,
+                                    color = if (isDark) Color(0xFF90A49E) else Color(0xFF3B524B)
+                                )
+                                Text(
+                                    SimpleDateFormat("MMMM d, yyyy", Locale.getDefault()).format(Date(selectedDateEpochMillis)),
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isDark) Color(0xFFE4F0EC) else Color(0xFF0E1915)
+                                )
+                            }
+                        }
+                        Icon(
+                            Icons.Default.Edit,
+                            contentDescription = "Edit Date",
+                            tint = if (isDark) Color(0xFF34D399) else Color(0xFF003527),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+
+            // Note Text Field
+            SkeuomorphicCard(
+                modifier = Modifier.fillMaxWidth(),
+                isDark = isDark
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "TRANSACTION NOTE / MEMO",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isDark) Color(0xFF90A49E) else Color(0xFF3B524B)
+                    )
+                    SkeuomorphicTextField(
+                        value = note,
+                        onValueChange = { note = it },
+                        isDark = isDark,
+                        placeholder = { Text("Write transaction specific details or receipt note...") }
+                    )
+                }
+            }
+
+            // Receipt Attachment Section
+            SkeuomorphicCard(
+                modifier = Modifier.fillMaxWidth(),
+                isDark = isDark
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = "RECEIPT DOCUMENT / ATTACHMENT",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
+                    )
+
+                    if (imagePathState == null) {
+                        SkeuomorphicButton(
+                            onClick = { receiptLauncher.launch("image/*") },
+                            modifier = Modifier.fillMaxWidth(),
+                            isDark = isDark
+                        ) {
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = null,
+                                tint = if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Upload Receipt Image",
+                                color = if (isDark) Color(0xFFE4F0EC) else Color(0xFF0E1915),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(160.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color.Black.copy(alpha = 0.05f))
+                        ) {
+                            AsyncImage(
+                                model = imagePathState,
+                                contentDescription = "Receipt Preview",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                            )
+                            IconButton(
+                                onClick = { imagePathState = null },
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(8.dp)
+                                    .background(Color.Black.copy(alpha = 0.6f), CircleShape)
+                                    .size(28.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Clear,
+                                    contentDescription = "Remove Document",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Category Selector Dialog (with theme alignment)
+    if (showCategoryDialog) {
+        Dialog(onDismissRequest = { showCategoryDialog = false }) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(400.dp),
+                shape = RoundedCornerShape(24.dp),
+                color = if (isDark) Color(0xFF121B17) else Color.White
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Text(
+                        "Select Category",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isDark) Color(0xFF34D399) else Color(0xFF003527)
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        items(categories.filter { it.type == type }) { cat ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        selectedCategory = cat
+                                        showCategoryDialog = false
+                                    }
+                                    .background(
+                                        if (isDark) Color(0xFF1A2622) else Color(0xFFF4F8F6),
+                                        RoundedCornerShape(12.dp)
+                                    )
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .background(parseHexColor(cat.color).copy(alpha = 0.2f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        IconsUtil.getIcon(cat.icon),
+                                        contentDescription = null,
+                                        tint = parseHexColor(cat.color)
+                                    )
+                                }
+                                Text(
+                                    cat.name,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isDark) Color(0xFFE4F0EC) else Color(0xFF0E1915)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Account selector Dialog
+    if (showAccountDialog) {
+        Dialog(onDismissRequest = { showAccountDialog = false }) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(350.dp),
+                shape = RoundedCornerShape(24.dp),
+                color = if (isDark) Color(0xFF121B17) else Color.White
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Text(
+                        "Select Account",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isDark) Color(0xFF34D399) else Color(0xFF003527)
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        items(accounts) { acc ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        selectedAccount = acc
+                                        showAccountDialog = false
+                                    }
+                                    .background(
+                                        if (isDark) Color(0xFF1A2622) else Color(0xFFF4F8F6),
+                                        RoundedCornerShape(12.dp)
+                                    )
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .background(if (isDark) Color(0xFF1B312A) else Color(0xFFE6F3EE)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        IconsUtil.getIcon("account_balance"),
+                                        contentDescription = null,
+                                        tint = if (isDark) Color(0xFF34D399) else Color(0xFF003527)
+                                    )
+                                }
+                                Column {
+                                    Text(
+                                        acc.name,
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isDark) Color(0xFFE4F0EC) else Color(0xFF0E1915)
+                                    )
+                                    Text(
+                                        acc.type,
+                                        fontSize = 12.sp,
+                                        color = if (isDark) Color(0xFF90A49E) else Color(0xFF3B524B)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // To Account selector (Transfer)
+    if (showToAccountDialog) {
+        Dialog(onDismissRequest = { showToAccountDialog = false }) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(350.dp),
+                shape = RoundedCornerShape(24.dp),
+                color = if (isDark) Color(0xFF121B17) else Color.White
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Text(
+                        "Destination Account",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isDark) Color(0xFF34D399) else Color(0xFF003527)
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        items(accounts.filter { it.id != selectedAccount?.id }) { acc ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        selectedToAccount = acc
+                                        showToAccountDialog = false
+                                    }
+                                    .background(
+                                        if (isDark) Color(0xFF1A2622) else Color(0xFFF4F8F6),
+                                        RoundedCornerShape(12.dp)
+                                    )
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .background(if (isDark) Color(0xFF1B312A) else Color(0xFFE6F3EE)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        IconsUtil.getIcon("account_balance"),
+                                        contentDescription = null,
+                                        tint = if (isDark) Color(0xFF34D399) else Color(0xFF003527)
+                                    )
+                                }
+                                Column {
+                                    Text(
+                                        acc.name,
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isDark) Color(0xFFE4F0EC) else Color(0xFF0E1915)
+                                    )
+                                    Text(
+                                        acc.type,
+                                        fontSize = 12.sp,
+                                        color = if (isDark) Color(0xFF90A49E) else Color(0xFF3B524B)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// 3. Vaults Screen (screenshot 2 - connected assets and liabilities)
+@Composable
+fun AccountsScreen(
+    viewModel: WealthViewModel,
+    navController: NavController,
+    onOpenDrawer: () -> Unit
+) {
+    val accounts by viewModel.accounts.collectAsStateWithLifecycle()
+    val currency by viewModel.currency.collectAsStateWithLifecycle()
+
+    var showCreateAccountDialog by remember { mutableStateOf(false) }
+
+    val totalAssets = accounts.filter { it.balance >= 0 }.sumOf { it.balance }
+    val totalLiabilities = accounts.filter { it.balance < 0 }.sumOf { it.balance }
+    val netWorth = totalAssets + totalLiabilities
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    IconButton(onClick = { onOpenDrawer() }) {
+                        Icon(Icons.Default.Menu, contentDescription = "Menu", tint = MaterialTheme.colorScheme.primary)
+                    }
+                    Text("Your Vaults", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                }
+                IconButton(onClick = { showCreateAccountDialog = true }) {
+                    Icon(Icons.Default.Add, contentDescription = "Add", tint = MaterialTheme.colorScheme.primary)
+                }
+            }
+        }
+
+        // Net Worth bento grid
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Box(modifier = Modifier.padding(20.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Column {
+                            Text("NET WORTH", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+                            Text("$currency ${String.format(Locale.getDefault(), "%,.2f", netWorth)}", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        }
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Card(
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Text("Total Assets", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                                    Text("$currency ${String.format(Locale.getDefault(), "%,.1f", totalAssets)}", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                            Card(
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFDAD6).copy(alpha = 0.4f)),
+                                border = BorderStroke(1.dp, Color(0xFFFFDAD6))
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Text("Total Liabilities", color = Color(0xFFBA1A1A), fontSize = 11.sp)
+                                    Text("$currency ${String.format(Locale.getDefault(), "%,.1f", totalLiabilities)}", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Vaults list grid
+        item {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.height(300.dp)
+            ) {
+                items(accounts) { acc ->
+                    var showDropdownMenu by remember { mutableStateOf(false) }
+
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp)
+                            .testTag("account_card_${acc.id}"),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        border = BorderStroke(
+                            1.dp,
+                            if (acc.balance < 0) Color(0xFFFFDAD6) else MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .fillMaxSize(),
+                            verticalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            if (acc.balance < 0) Color(0xFFFFDAD6) else Color(0xFFB0F0D6)
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        IconsUtil.getIcon(
+                                            when (acc.type) {
+                                                "Bank" -> "account_balance"
+                                                "Cash" -> "wallet"
+                                                "Credit Card" -> "credit_card"
+                                                else -> "smartphone"
+                                            }
+                                        ),
+                                        contentDescription = null,
+                                        tint = if (acc.balance < 0) Color(0xFFBA1A1A) else Color(0xFF003527)
+                                    )
+                                }
+                                Box {
+                                    IconButton(
+                                        onClick = { showDropdownMenu = true },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(Icons.Default.MoreVert, contentDescription = "More", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                    DropdownMenu(
+                                        expanded = showDropdownMenu,
+                                        onDismissRequest = { showDropdownMenu = false }
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text("Delete Account") },
+                                            onClick = {
+                                                viewModel.deleteAccount(acc)
+                                                showDropdownMenu = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+
+                            Column {
+                                Text(acc.name, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurface)
+                                Text(acc.type, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+
+                            Text(
+                                text = "$currency ${String.format(Locale.getDefault(), "%,.1f", acc.balance)}",
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 18.sp,
+                                color = if (acc.balance < 0) Color(0xFFBA1A1A) else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Add Account dialog
+    if (showCreateAccountDialog) {
+        var accName by remember { mutableStateOf("") }
+        var accType by remember { mutableStateOf("Bank") } // "Cash", "Bank", "Credit Card", "Digital Wallet"
+        var accBalance by remember { mutableStateOf("") }
+
+        Dialog(onDismissRequest = { showCreateAccountDialog = false }) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                shape = RoundedCornerShape(20.dp),
+                tonalElevation = 6.dp,
+                color = MaterialTheme.colorScheme.surface
+            ) {
+                Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text("Add New Account", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+
+                    OutlinedTextField(
+                        value = accName,
+                        onValueChange = { accName = it },
+                        label = { Text("Account Name") },
+                        modifier = Modifier.fillMaxWidth().testTag("add_account_name")
+                    )
+
+                    // Type Row Choice
+                    Text("Account Type", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    val types = listOf("Cash", "Bank", "Credit Card", "Digital Wallet")
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        types.forEach { typeChoice ->
+                            val s = accType == typeChoice
+                            FilterChip(
+                                selected = s,
+                                onClick = { accType = typeChoice },
+                                label = { Text(typeChoice) },
+                                modifier = Modifier.testTag("acc_type_$typeChoice")
+                            )
+                        }
+                    }
+
+                    OutlinedTextField(
+                        value = accBalance,
+                        onValueChange = { accBalance = it },
+                        label = { Text("Initial Balance") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth().testTag("add_account_balance")
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(onClick = { showCreateAccountDialog = false }) {
+                            Text("Cancel")
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Button(
+                            onClick = {
+                                val bal = accBalance.toDoubleOrNull() ?: 0.0
+                                if (accName.isNotBlank()) {
+                                    viewModel.addAccount(accName, accType, bal)
+                                    showCreateAccountDialog = false
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
+                        ) {
+                            Text("Add Account")
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// 4. Categories Screen (Track activities & search/filters)
+@Composable
+fun CategoriesScreen(viewModel: WealthViewModel, navController: NavController) {
+    val categories by viewModel.categories.collectAsStateWithLifecycle()
+    val transactions by viewModel.transactions.collectAsStateWithLifecycle()
+    val currency by viewModel.currency.collectAsStateWithLifecycle()
+
+    var activeTab by remember { mutableStateOf("All") } // "All", "Income", "Expense"
+    var showAddCategory by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Categories & Log", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            IconButton(onClick = { showAddCategory = true }) {
+                Icon(Icons.Default.Add, contentDescription = "Add", tint = MaterialTheme.colorScheme.primary)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Tab selection
+        TabRow(
+            selectedTabIndex = when (activeTab) {
+                "All" -> 0
+                "Income" -> 1
+                else -> 2
+            },
+            modifier = Modifier.fillMaxWidth(),
+            containerColor = MaterialTheme.colorScheme.background,
+            contentColor = MaterialTheme.colorScheme.primary
+        ) {
+            Tab(selected = activeTab == "All", onClick = { activeTab = "All" }) {
+                Text("All Log", modifier = Modifier.padding(12.dp), color = if (activeTab == "All") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f), fontWeight = if (activeTab == "All") FontWeight.Bold else FontWeight.Normal)
+            }
+            Tab(selected = activeTab == "Income", onClick = { activeTab = "Income" }) {
+                Text("Income", modifier = Modifier.padding(12.dp), color = if (activeTab == "Income") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f), fontWeight = if (activeTab == "Income") FontWeight.Bold else FontWeight.Normal)
+            }
+            Tab(selected = activeTab == "Expense", onClick = { activeTab = "Expense" }) {
+                Text("Expense", modifier = Modifier.padding(12.dp), color = if (activeTab == "Expense") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f), fontWeight = if (activeTab == "Expense") FontWeight.Bold else FontWeight.Normal)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Categories Grid or Full Transaction listing
+        if (activeTab == "All") {
+            // Log listing
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                items(transactions) { tx ->
+                    val cat = categories.find { it.id == tx.categoryId }
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.weight(1f)) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(CircleShape)
+                                        .background(parseHexColor(cat?.color ?: "#7F8C8D").copy(alpha = 0.2f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        IconsUtil.getIcon(cat?.icon ?: "receipt"),
+                                        contentDescription = null,
+                                        tint = parseHexColor(cat?.color ?: "#7F8C8D")
+                                    )
+                                }
+                                Column {
+                                    Text(cat?.name ?: "Transfer Log", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurface)
+                                    Text(tx.note.ifBlank { "No note" }, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(
+                                    text = "$currency ${tx.amount}",
+                                    color = if (tx.type == "Income") Color(0xFF10B981) else MaterialTheme.colorScheme.error,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                IconButton(onClick = { viewModel.deleteTransaction(tx) }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            // Category list representing either Income or Expense categories
+            val filteredCats = categories.filter { it.type == activeTab }
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(filteredCats) { cat ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(100.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(parseHexColor(cat.color).copy(alpha = 0.2f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(IconsUtil.getIcon(cat.icon), contentDescription = null, tint = parseHexColor(cat.color))
+                            }
+                            Column {
+                                Text(cat.name, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                                Text(cat.type, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Add category dialog
+    if (showAddCategory) {
+        var catName by remember { mutableStateOf("") }
+        var catType by remember { mutableStateOf("Expense") }
+        var catColor by remember { mutableStateOf("#9b5de5") }
+        var catIcon by remember { mutableStateOf("restaurant") }
+
+        Dialog(onDismissRequest = { showAddCategory = false }) {
+            Surface(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface) {
+                Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text("Add Custom Category", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+
+                    OutlinedTextField(
+                        value = catName,
+                        onValueChange = { catName = it },
+                        label = { Text("Category Name") },
+                        modifier = Modifier.fillMaxWidth().testTag("add_cat_name")
+                    )
+
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Button(
+                            onClick = { catType = "Expense" },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (catType == "Expense") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                                contentColor = if (catType == "Expense") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        ) {
+                            Text("Expense")
+                        }
+                        Button(
+                            onClick = { catType = "Income" },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (catType == "Income") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                                contentColor = if (catType == "Income") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        ) {
+                            Text("Income")
+                        }
+                    }
+
+                    // Simple palette selection
+                    Text("Choose Color", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    val colors = listOf("#FF5E5B", "#457B9D", "#2A9D8F", "#E9C46A", "#9B5DE5", "#F15BB5", "#2B6954", "#10B981")
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        colors.forEach { c ->
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(parseHexColor(c))
+                                    .border(
+                                        width = if (catColor == c) 3.dp else 0.dp,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        shape = CircleShape
+                                    )
+                                    .clickable { catColor = c }
+                            )
+                        }
+                    }
+
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        TextButton(onClick = { showAddCategory = false }) { Text("Cancel") }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
+                            onClick = {
+                                if (catName.isNotBlank()) {
+                                    viewModel.addCategory(catName, catType, catIcon, catColor)
+                                    showAddCategory = false
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
+                        ) {
+                            Text("Add")
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// 5. Reports & Analytics Screen (screenshot 2 - Ring Pie chart & Spline graph spending trend)
+@Composable
+fun ReportsScreen(
+    viewModel: WealthViewModel,
+    navController: NavController,
+    onOpenDrawer: () -> Unit
+) {
+    val transactions by viewModel.transactions.collectAsStateWithLifecycle()
+    val categories by viewModel.categories.collectAsStateWithLifecycle()
+    val currency by viewModel.currency.collectAsStateWithLifecycle()
+
+    var reportsFilter by remember { mutableStateOf("Monthly") } // "Daily", "Weekly", "Monthly", "Yearly"
+
+    val totalIncome = transactions.filter { it.type == "Income" }.sumOf { it.amount }
+    val totalExpense = transactions.filter { it.type == "Expense" }.sumOf { it.amount }
+
+    // Aggregate category expenses
+    val expenseTxs = transactions.filter { it.type == "Expense" }
+    val expensesByCategory = expenseTxs
+        .groupBy { it.categoryId }
+        .map { (catId, txList) ->
+            val cat = categories.find { it.id == catId }
+            CategorySpending(
+                name = cat?.name ?: "Others",
+                color = cat?.color ?: "#7F8C8D",
+                icon = cat?.icon ?: "receipt",
+                amount = txList.sumOf { it.amount }
+            )
+        }.sortedByDescending { it.amount }
+
+    val totalCategorizedExpense = expensesByCategory.sumOf { it.amount }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        // Page Header
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                IconButton(onClick = { onOpenDrawer() }) {
+                    Icon(Icons.Default.Menu, contentDescription = "Menu", tint = MaterialTheme.colorScheme.primary)
+                }
+                Column {
+                    Text("Reports & Analytics", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Text("Insights into your financial health", fontSize = 13.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f))
+                }
+            }
+        }
+
+        // Date Range Selector (Pill tabs)
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(32.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Row(modifier = Modifier.padding(4.dp)) {
+                    val tabs = listOf("Daily", "Weekly", "Monthly", "Yearly")
+                    tabs.forEach { tab ->
+                        val active = reportsFilter == tab
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(36.dp)
+                                .clip(RoundedCornerShape(32.dp))
+                                .background(if (active) MaterialTheme.colorScheme.surface else Color.Transparent)
+                                .clickable { reportsFilter = tab }
+                                .testTag("reports_tab_$tab"),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = tab,
+                                fontSize = 12.sp,
+                                fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+                                color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Income & Expense comparisons
+        item {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Card(
+                    modifier = Modifier.weight(1f),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Row(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFB0F0D6)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.Menu, contentDescription = null, tint = Color(0xFF2B6954))
+                        }
+                        Column {
+                            Text("Total Income", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("$currency ${String.format(Locale.getDefault(), "%,.0f", totalIncome)}", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                        }
+                    }
+                }
+                Card(
+                    modifier = Modifier.weight(1f),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Row(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFFFDAD6)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.Menu, contentDescription = null, tint = Color(0xFFBA1A1A))
+                        }
+                        Column {
+                            Text("Total Expenses", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("$currency ${String.format(Locale.getDefault(), "%,.0f", totalExpense)}", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                        }
+                    }
+                }
+            }
+        }
+
+        // Category Spending Ring Chart
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text("Category Spending", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+
+                    if (expensesByCategory.isEmpty()) {
+                        Text("No logs for Pie Chart calculation.", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+                    } else {
+                        // Drawing premium Ring Pie Donut chart
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Canvas(modifier = Modifier.size(160.dp)) {
+                                var runAngle = -90f
+                                for (item in expensesByCategory) {
+                                    val sweep = (item.amount / totalCategorizedExpense * 360f).toFloat()
+                                    drawArc(
+                                        color = parseHexColor(item.color),
+                                        startAngle = runAngle,
+                                        sweepAngle = sweep,
+                                        useCenter = false,
+                                        style = Stroke(width = 30.dp.toPx(), cap = StrokeCap.Round)
+                                    )
+                                    runAngle += sweep
+                                }
+                            }
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("Total", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("$currency ${String.format(Locale.getDefault(), "%,.1fk", totalCategorizedExpense / 1000.0)}", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+
+                        // Grid items details
+                        val gridData = expensesByCategory.take(4)
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            gridData.chunked(2).forEach { pair ->
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                                    pair.forEach { item ->
+                                        val percent = (item.amount / totalCategorizedExpense * 100).toInt()
+                                        Row(
+                                            modifier = Modifier.weight(1f),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Box(modifier = Modifier.size(12.dp).clip(CircleShape).background(parseHexColor(item.color)))
+                                            Text(item.name, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                            Text("$percent%", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Spending Trend Spline curve
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Spending Trend", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Text("Last 30 days outline", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+                    // Spline canvas draw
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp)
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                            .border(1.dp, MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+                            .padding(12.dp)
+                    ) {
+                        val strokeColor = MaterialTheme.colorScheme.primary
+                        val strokeColorAlpha = strokeColor.copy(alpha = 0.2f)
+                        Canvas(modifier = Modifier.fillMaxSize()) {
+                            val w = size.width
+                            val h = size.height
+
+                            // Draw horizontal dotted grid lines
+                            val gridCount = 4
+                            for (i in 0 until gridCount) {
+                                val gridY = h * i / (gridCount - 1)
+                                drawLine(
+                                    color = strokeColor.copy(alpha = 0.15f),
+                                    start = Offset(0f, gridY),
+                                    end = Offset(w, gridY),
+                                    strokeWidth = 1.6f
+                                )
+                            }
+
+                            // Spend simulated spline dots (Oct 1..30)
+                            val points = listOf(
+                                Offset(w * 0f, h * 0.8f),
+                                Offset(w * 0.2f, h * 0.75f),
+                                Offset(w * 0.4f, h * 0.7f),
+                                Offset(w * 0.6f, h * 0.4f),
+                                Offset(w * 0.8f, h * 0.3f),
+                                Offset(w * 1f, h * 0.2f)
+                            )
+
+                            val splinePath = Path().apply {
+                                moveTo(points[0].x, points[0].y)
+                                for (i in 1 until points.size) {
+                                    val prev = points[i - 1]
+                                    val current = points[i]
+                                    cubicTo(
+                                        (prev.x + current.x) / 2, prev.y,
+                                        (prev.x + current.x) / 2, current.y,
+                                        current.x, current.y
+                                    )
+                                }
+                            }
+
+                            // Draw spline gradient fill
+                            val fillPath = Path().apply {
+                                addPath(splinePath)
+                                lineTo(w, h)
+                                lineTo(0f, h)
+                                close()
+                            }
+                            drawPath(
+                                path = fillPath,
+                                brush = Brush.verticalGradient(
+                                    listOf(strokeColorAlpha, Color.Transparent)
+                                )
+                            )
+
+                            // Draw line
+                            drawPath(
+                                path = splinePath,
+                                color = strokeColor,
+                                style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
+                            )
+
+                            // Interact dot highlighter
+                            val highlightIdx = 4
+                            val dot = points[highlightIdx]
+                            drawCircle(color = Color.White, radius = 6.dp.toPx(), center = dot)
+                            drawCircle(color = strokeColor, radius = 4.dp.toPx(), center = dot, style = Stroke(width = 2.dp.toPx()))
+                        }
+                    }
+                }
+            }
+        }
+
+        item {
+            Spacer(modifier = Modifier.height(60.dp))
+        }
+    }
+}
+
+data class CategorySpending(val name: String, val color: String, val icon: String, val amount: Double)
+
+// 6. Budget Screen
+@Composable
+fun BudgetScreen(viewModel: WealthViewModel, navController: NavController) {
+    val budgets by viewModel.budgetsWithDetails.collectAsStateWithLifecycle()
+    val categories by viewModel.categories.collectAsStateWithLifecycle()
+    val currency by viewModel.currency.collectAsStateWithLifecycle()
+
+    var showAddBudgetDialog by remember { mutableStateOf(false) }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Limits & Budgets", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                IconButton(onClick = { showAddBudgetDialog = true }) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Budget", tint = MaterialTheme.colorScheme.primary)
+                }
+            }
+        }
+
+        if (budgets.isEmpty()) {
+            item {
+                Box(modifier = Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Icon(Icons.Default.Star, contentDescription = null, tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f), modifier = Modifier.size(48.dp))
+                        Text("No monthly limit budgets defined yet.", color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
+                    }
+                }
+            }
+        } else {
+            items(budgets) { item ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .background(parseHexColor(item.categoryColor).copy(alpha = 0.2f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(IconsUtil.getIcon(item.categoryIcon), contentDescription = null, tint = parseHexColor(item.categoryColor))
+                                }
+                                Text(item.categoryName, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
+                            }
+                            IconButton(onClick = { viewModel.saveBudget(item.categoryId, 0.0, item.month) }) {
+                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+
+                        val fraction = if (item.limitAmount > 0) (item.usedAmount / item.limitAmount).toFloat() else 0f
+                        val limitExcess = item.usedAmount > item.limitAmount
+
+                        LinearProgressIndicator(
+                            progress = fraction.coerceIn(0f, 1f),
+                            modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
+                            color = if (limitExcess) Color(0xFFBA1A1A) else MaterialTheme.colorScheme.primary,
+                            trackColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Spent: $currency ${item.usedAmount}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Limit: $currency ${item.limitAmount}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
+                        }
+
+                        if (limitExcess) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Icon(Icons.Default.Warning, contentDescription = "Warning", tint = Color(0xFFBA1A1A), modifier = Modifier.size(16.dp))
+                                Text("Over-budget alert! You exceeded limit.", color = Color(0xFFBA1A1A), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showAddBudgetDialog) {
+        var selectedCat by remember { mutableStateOf<CategoryEntity?>(null) }
+        var limitAmount by remember { mutableStateOf("") }
+        var showCatSelector by remember { mutableStateOf(false) }
+
+        Dialog(onDismissRequest = { showAddBudgetDialog = false }) {
+            Surface(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface) {
+                Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text("Set Category Limit", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+
+                    // Choose Category Button
+                    Button(
+                        onClick = { showCatSelector = true },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant, contentColor = MaterialTheme.colorScheme.onSurfaceVariant),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(selectedCat?.name ?: "Select Category")
+                    }
+
+                    OutlinedTextField(
+                        value = limitAmount,
+                        onValueChange = { limitAmount = it },
+                        label = { Text("Limit Amount") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth().testTag("add_budget_amount")
+                    )
+
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        TextButton(onClick = { showAddBudgetDialog = false }) { Text("Cancel") }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
+                            onClick = {
+                                val amt = limitAmount.toDoubleOrNull() ?: 0.0
+                                if (selectedCat != null && amt > 0) {
+                                    viewModel.saveBudget(selectedCat!!.id, amt, SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(Date()))
+                                    showAddBudgetDialog = false
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
+                        ) {
+                            Text("Set Budget")
+                        }
+                    }
+                }
+            }
+        }
+
+        // Subcategory dialog chooser
+        if (showCatSelector) {
+            Dialog(onDismissRequest = { showCatSelector = false }) {
+                Surface(modifier = Modifier.fillMaxWidth().height(300.dp), shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface) {
+                    LazyColumn(modifier = Modifier.padding(16.dp)) {
+                        items(categories.filter { it.type == "Expense" }) { cat ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        selectedCat = cat
+                                        showCatSelector = false
+                                    }
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                        .background(parseHexColor(cat.color).copy(alpha = 0.2f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(IconsUtil.getIcon(cat.icon), contentDescription = null, tint = parseHexColor(cat.color))
+                                }
+                                Text(cat.name, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// 7. Settings Screen
+@Composable
+fun SettingsScreen(
+    viewModel: WealthViewModel,
+    navController: NavController,
+    onOpenDrawer: () -> Unit
+) {
+    val context = LocalContext.current
+    val savedPin by viewModel.savedPin.collectAsStateWithLifecycle()
+    val isDarkMode by viewModel.isDarkMode.collectAsStateWithLifecycle()
+    val currency by viewModel.currency.collectAsStateWithLifecycle()
+
+    var showPinDialog by remember { mutableStateOf(false) }
+    var pinInputValue by remember { mutableStateOf("") }
+
+    val fileChooserLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+        onResult = { uri ->
+            uri?.let {
+                viewModel.importFromCSV(
+                    context,
+                    it,
+                    onSuccess = { Toast.makeText(context, "CSV Imported Successfully!", Toast.LENGTH_SHORT).show() },
+                    onError = { err -> Toast.makeText(context, "Import failed: $err", Toast.LENGTH_LONG).show() }
+                )
+            }
+        }
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(if (isDarkMode) Color(0xFF080F0D) else Color(0xFFF4F8F6))
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            IconButton(onClick = { onOpenDrawer() }) {
+                Icon(Icons.Default.Menu, contentDescription = "Menu", tint = MaterialTheme.colorScheme.primary)
+            }
+            Text(
+                text = "Theme & Settings",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (isDarkMode) Color(0xFF34D399) else Color(0xFF003527)
+            )
+        }
+
+        // Dark mode Row
+        SkeuomorphicCard(
+            modifier = Modifier.fillMaxWidth(),
+            isDark = isDarkMode
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        "Dark Theme Palette",
+                        fontWeight = FontWeight.Bold,
+                        color = if (isDarkMode) Color(0xFFE4F0EC) else Color(0xFF0E1915)
+                    )
+                    Text(
+                        "Enable sleek high-contrast night theme",
+                        fontSize = 12.sp,
+                        color = if (isDarkMode) Color(0xFF90A49E) else Color(0xFF3B524B)
+                    )
+                }
+                Switch(
+                    checked = isDarkMode,
+                    onCheckedChange = { viewModel.toggleDarkMode() },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = if (isDarkMode) Color(0xFF34D399) else Color(0xFF003527),
+                        checkedTrackColor = (if (isDarkMode) Color(0xFF34D399) else Color(0xFF003527)).copy(alpha = 0.3f),
+                        uncheckedThumbColor = Color.Gray,
+                        uncheckedTrackColor = Color.LightGray
+                    )
+                )
+            }
+        }
+
+        // Currency Selector Row
+        SkeuomorphicCard(
+            modifier = Modifier.fillMaxWidth(),
+            isDark = isDarkMode
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    "Primary Ledger Currency",
+                    fontWeight = FontWeight.Bold,
+                    color = if (isDarkMode) Color(0xFFE4F0EC) else Color(0xFF0E1915)
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val list = listOf("AED", "USD", "INR", "EUR")
+                    list.forEach { cur ->
+                        val active = currency == cur
+                        SkeuomorphicButton(
+                            onClick = { viewModel.setCurrency(cur) },
+                            isDark = isDarkMode,
+                            isSelected = active,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                text = cur,
+                                fontWeight = FontWeight.Bold,
+                                color = if (active) {
+                                    if (isDarkMode) Color(0xFF34D399) else Color(0xFF003527)
+                                } else {
+                                    if (isDarkMode) Color(0xFF90A49E) else Color(0xFF3B524B)
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // CSV Local Export Card
+        SkeuomorphicCard(
+            modifier = Modifier.fillMaxWidth(),
+            isDark = isDarkMode
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Text(
+                    "Backup & Recover Local Data",
+                    fontWeight = FontWeight.Bold,
+                    color = if (isDarkMode) Color(0xFFE4F0EC) else Color(0xFF0E1915)
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    SkeuomorphicButton(
+                        onClick = {
+                            val uri = viewModel.exportToCSV(context)
+                            if (uri != null) {
+                                val intent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/csv"
+                                    putExtra(Intent.EXTRA_STREAM, uri)
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                                context.startActivity(Intent.createChooser(intent, "Export Transactions CSV"))
+                            } else {
+                                Toast.makeText(context, "Export error", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        isDark = isDarkMode
+                    ) {
+                        Text(
+                            "Export CSV",
+                            fontWeight = FontWeight.Bold,
+                            color = if (isDarkMode) Color(0xFF34D399) else Color(0xFF003527)
+                        )
+                    }
+                    SkeuomorphicButton(
+                        onClick = { fileChooserLauncher.launch(arrayOf("text/comma-separated-values", "text/csv")) },
+                        modifier = Modifier.weight(1f),
+                        isDark = isDarkMode
+                    ) {
+                        Text(
+                            "Import CSV",
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF10B981)
+                        )
+                    }
+                }
+            }
+        }
+
+        // App PIN Lock Settings
+        SkeuomorphicCard(
+            modifier = Modifier.fillMaxWidth(),
+            isDark = isDarkMode
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "App PIN Security Protection",
+                        fontWeight = FontWeight.Bold,
+                        color = if (isDarkMode) Color(0xFFE4F0EC) else Color(0xFF0E1915)
+                    )
+                    Text(
+                        if (savedPin != null) "Lock is Active (PIN configured)" else "Not Configured (Danger: public access)",
+                        fontSize = 12.sp,
+                        color = if (savedPin != null) Color(0xFF10B981) else Color.Red
+                    )
+                }
+                SkeuomorphicButton(
+                    onClick = { showPinDialog = true },
+                    isDark = isDarkMode
+                ) {
+                    Text(
+                        text = if (savedPin != null) "Manage PIN" else "Configure",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isDarkMode) Color(0xFF34D399) else Color(0xFF003527)
+                    )
+                }
+            }
+        }
+
+        // Firebase Cloud Session Sync Card
+        val activeUserName by viewModel.googleUserName.collectAsStateWithLifecycle()
+        val activeUserEmail by viewModel.googleUserEmail.collectAsStateWithLifecycle()
+        val isLoggedIn by viewModel.isGoogleLoggedIn.collectAsStateWithLifecycle()
+
+        val isFirebaseCustomConfigured = try {
+            val k = com.example.BuildConfig.FIREBASE_API_KEY
+            val app = com.example.BuildConfig.FIREBASE_APPLICATION_ID
+            val proj = com.example.BuildConfig.FIREBASE_PROJECT_ID
+            k.isNotBlank() && !k.startsWith("PLACEHOLDER") &&
+            app.isNotBlank() && !app.startsWith("PLACEHOLDER") &&
+            proj.isNotBlank() && !proj.startsWith("PLACEHOLDER")
+        } catch (e: Throwable) { false }
+
+        SkeuomorphicCard(
+            modifier = Modifier.fillMaxWidth(),
+            isDark = isDarkMode
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    "Cloud Engine Sync Status",
+                    fontWeight = FontWeight.Bold,
+                    color = if (isDarkMode) Color(0xFFE4F0EC) else Color(0xFF0E1915)
+                )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .background(
+                                color = if (isFirebaseCustomConfigured) Color(0xFF10B981) else Color(0xFFFBBF24),
+                                shape = CircleShape
+                            )
+                    )
+                    Text(
+                        text = if (isFirebaseCustomConfigured) "LIVE SERVER SYNC ACTIVE" else "LOCAL SANDBOX SYNC MODE",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isFirebaseCustomConfigured) Color(0xFF10B981) else Color(0xFFFBBF24)
+                    )
+                }
+
+                Text(
+                    text = if (isFirebaseCustomConfigured) {
+                        "Synchronized securely through Google Play authentication nodes and Firebase Database servers."
+                    } else {
+                        "Currently running on a fail-safe sandbox. Add keys to the AI Studio Secrets panel to connect to your real Firebase instance:"
+                    },
+                    fontSize = 12.sp,
+                    color = if (isDarkMode) Color(0xFF90A49E) else Color(0xFF3B524B)
+                )
+
+                if (!isFirebaseCustomConfigured) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(if (isDarkMode) Color(0x10FFFFFF) else Color(0x05000000))
+                            .padding(8.dp)
+                    ) {
+                        Text("• FIREBASE_API_KEY", fontSize = 11.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, color = if (isDarkMode) Color(0xFF34D399) else Color(0xFF003527))
+                        Text("• FIREBASE_APPLICATION_ID", fontSize = 11.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, color = if (isDarkMode) Color(0xFF34D399) else Color(0xFF003527))
+                        Text("• FIREBASE_PROJECT_ID", fontSize = 11.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, color = if (isDarkMode) Color(0xFF34D399) else Color(0xFF003527))
+                        Text("• FIREBASE_WEB_CLIENT_ID", fontSize = 11.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, color = if (isDarkMode) Color(0xFF34D399) else Color(0xFF003527))
+                    }
+                }
+
+                if (isLoggedIn && activeUserEmail != null) {
+                    Divider(color = (if (isDarkMode) Color.White else Color.Black).copy(alpha = 0.1f))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "Active Cloud Profile",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isDarkMode) Color(0xFF90A49E) else Color(0xFF3B524B)
+                            )
+                            Text(
+                                text = "$activeUserName",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isDarkMode) Color(0xFFE4F0EC) else Color(0xFF0E1915)
+                            )
+                            Text(
+                                text = "$activeUserEmail",
+                                fontSize = 11.sp,
+                                color = if (isDarkMode) Color(0xFF90A49E) else Color(0xFF3B524B)
+                            )
+                        }
+                        SkeuomorphicButton(
+                            onClick = {
+                                viewModel.logoutGoogle()
+                                Toast.makeText(context, "Session Logged Out", Toast.LENGTH_SHORT).show()
+                            },
+                            isDark = isDarkMode
+                        ) {
+                            Text("Logout", fontSize = 11.sp, color = Color.Red, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showPinDialog) {
+        Dialog(onDismissRequest = { showPinDialog = false }) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                color = if (isDarkMode) Color(0xFF121B17) else Color.White
+            ) {
+                Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text(
+                        "Configure App Lock PIN",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isDarkMode) Color(0xFF34D399) else Color(0xFF003527)
+                    )
+                    Text(
+                        "Enter a 4-digit code to lock CashFlow from prying eyes upon starting screen launches",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    SkeuomorphicTextField(
+                        value = pinInputValue,
+                        onValueChange = { if (it.length <= 4) pinInputValue = it },
+                        isDark = isDarkMode,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        label = { Text("4 Digit Code PIN") }
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(onClick = {
+                            viewModel.setPin(null)
+                            showPinDialog = false
+                        }) {
+                            Text("Disable Lock", color = Color.Red, fontWeight = FontWeight.Bold)
+                        }
+                        Spacer(modifier = Modifier.weight(1f))
+                        TextButton(onClick = { showPinDialog = false }) {
+                            Text(
+                                "Cancel",
+                                color = if (isDarkMode) Color(0xFF90A49E) else Color(0xFF3B524B)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        SkeuomorphicButton(
+                            onClick = {
+                                if (pinInputValue.length == 4) {
+                                    viewModel.setPin(pinInputValue)
+                                    showPinDialog = false
+                                } else {
+                                    Toast.makeText(context, "Must enter exactly 4 digits", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            isDark = isDarkMode
+                        ) {
+                            Text(
+                                "Save PIN",
+                                fontWeight = FontWeight.Bold,
+                                color = if (isDarkMode) Color(0xFF34D399) else Color(0xFF003527)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Advanced Feature: EMI Payment Tracker Page
+@Composable
+fun EMIScreen(
+    viewModel: WealthViewModel,
+    navController: NavController,
+    onOpenDrawer: () -> Unit
+) {
+    val accounts by viewModel.accounts.collectAsStateWithLifecycle()
+    val emis by viewModel.emis.collectAsStateWithLifecycle()
+    val currency by viewModel.currency.collectAsStateWithLifecycle()
+    val isDark by viewModel.isDarkMode.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
+    var showCreateEMIDialog by remember { mutableStateOf(false) }
+    var selectedCategoryTab by remember { mutableStateOf("Installments") }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    IconButton(onClick = { onOpenDrawer() }) {
+                        Icon(Icons.Default.Menu, contentDescription = "Menu", tint = MaterialTheme.colorScheme.primary)
+                    }
+                    Column {
+                        Text(
+                            text = "Installments & Debts",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "Active multi-month commitments & personal ledger",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                SkeuomorphicButton(
+                    onClick = { showCreateEMIDialog = true },
+                    isDark = isDark,
+                    isSelected = true,
+                    modifier = Modifier.size(46.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = "Add Track",
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+        }
+
+        // Elegant Neumorphic Tab switcher
+        item {
+            SkeuomorphicCard(
+                modifier = Modifier.fillMaxWidth(),
+                isDark = isDark,
+                shape = RoundedCornerShape(24.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    listOf("Installments", "Debts & Loans").forEach { tab ->
+                        val isSelected = selectedCategoryTab == tab
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(40.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(
+                                    if (isSelected) {
+                                        MaterialTheme.colorScheme.primaryContainer
+                                    } else Color.Transparent
+                                )
+                                .clickable {
+                                    selectedCategoryTab = tab
+                                }
+                                .padding(vertical = 4.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = tab,
+                                color = if (isSelected) {
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        val filteredEmis = if (selectedCategoryTab == "Installments") {
+            emis.filter { !it.isDebt }
+        } else {
+            emis.filter { it.isDebt }
+        }
+
+        if (filteredEmis.isEmpty()) {
+            item {
+                SkeuomorphicCard(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                    isDark = isDark
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Text(
+                            text = if (selectedCategoryTab == "Installments") "No payment installments logged yet." else "No active personal debts or loan sheets logged.",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = if (isDark) Color(0xFF90A49E) else Color(0xFF3B524B),
+                            textAlign = TextAlign.Center
+                        )
+                        SkeuomorphicButton(
+                            onClick = { showCreateEMIDialog = true },
+                            isDark = isDark
+                        ) {
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = null,
+                                tint = if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (selectedCategoryTab == "Installments") "Add Installment Plan" else "Add Debt / Loan Sheet",
+                                color = if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
+                }
+            }
+        } else {
+            items(filteredEmis) { emi ->
+                var payAmount by remember { mutableStateOf("") }
+                var showPayDialog by remember { mutableStateOf(false) }
+                var selectedPayAccount by remember { mutableStateOf<AccountEntity?>(null) }
+
+                LaunchedEffect(accounts) {
+                    if (selectedPayAccount == null && accounts.isNotEmpty()) {
+                        selectedPayAccount = accounts.first()
+                    }
+                }
+
+                SkeuomorphicCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    isDark = isDark
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                if (emi.isDebt) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        val color = if (emi.debtType == "Borrowed") Color(0xFFFBBF24) else Color(0xFF10B981)
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(4.dp))
+                                                .background(color.copy(alpha = 0.15f))
+                                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                        ) {
+                                            Text(
+                                                text = if (emi.debtType == "Borrowed") "Borrowed 🡓" else "Lent 🡑",
+                                                color = color,
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.Black
+                                            )
+                                        }
+                                        Text(
+                                            text = "Tenure: ${emi.tenureMonths} Mo",
+                                            fontSize = 10.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = emi.title,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    if (emi.personName.isNotBlank()) {
+                                        Text(
+                                            text = "Flowing with: ${emi.personName}",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                } else {
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .background(Color.Gray.copy(alpha = 0.15f))
+                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                            .width(72.dp)
+                                    ) {
+                                        Text(
+                                            text = "Installment Plan",
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            fontSize = 8.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = emi.title,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                                Text(
+                                    text = "Monthly Day due: Day ${emi.dueDate}",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            SkeuomorphicButton(
+                                onClick = { viewModel.deleteEMI(emi) },
+                                isDark = isDark,
+                                modifier = Modifier.size(38.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = "Delete",
+                                    tint = Color.Red.copy(alpha = 0.8f),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+
+                        val progress = if (emi.totalAmount > 0) (emi.paidAmount / emi.totalAmount).toFloat() else 1f
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(8.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .fillMaxWidth(progress.coerceIn(0f, 1f))
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(MaterialTheme.colorScheme.primary)
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = "Repaid/Paid: $currency ${String.format("%.2f", emi.paidAmount)}",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "Target Total: $currency ${String.format("%.2f", emi.totalAmount)}",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+
+                            val remaining = emi.totalAmount - emi.paidAmount
+                            if (remaining > 0) {
+                                SkeuomorphicButton(
+                                    onClick = { showPayDialog = true },
+                                    isDark = isDark,
+                                    isSelected = true
+                                ) {
+                                    Text(
+                                        "Log Repayment",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(Color(0xFF059669).copy(alpha = 0.15f))
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        "Fully Settled! ✨",
+                                        color = Color(0xFF10B981),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Pay installment pop-up
+                if (showPayDialog) {
+                    Dialog(onDismissRequest = { showPayDialog = false }) {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(24.dp),
+                            color = if (isDark) Color(0xFF121B17) else Color.White
+                        ) {
+                            Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                Text(
+                                    text = "Log Multi-Month Installment",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
+                                )
+                                Text(
+                                    text = "Recording repayment for tracker: ${emi.title}",
+                                    fontSize = 12.sp,
+                                    color = if (isDark) Color(0xFF90A49E) else Color(0xFF4C5D55)
+                                )
+
+                                SkeuomorphicTextField(
+                                    value = payAmount,
+                                    onValueChange = { payAmount = it },
+                                    label = { Text("Repayment Amount / Installment") },
+                                    isDark = isDark,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                                )
+
+                                Text(
+                                    text = "Debit/Deduct from Source Vault Account:",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isDark) Color(0xFFE4F0EC) else Color(0xFF101B17)
+                                )
+                                Row(
+                                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    accounts.forEach { acc ->
+                                        val s = selectedPayAccount?.id == acc.id
+                                        SkeuomorphicButton(
+                                            onClick = { selectedPayAccount = acc },
+                                            isDark = isDark,
+                                            isSelected = s,
+                                            modifier = Modifier.widthIn(min = 100.dp)
+                                        ) {
+                                            Text(
+                                                text = acc.name,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (s) {
+                                                    if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
+                                                } else {
+                                                    if (isDark) Color(0xFF90A49E) else Color(0xFF4C5D55)
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.End) {
+                                    TextButton(onClick = { showPayDialog = false }) {
+                                        Text("Cancel", color = Color.Gray)
+                                    }
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    SkeuomorphicButton(
+                                        onClick = {
+                                            val payVal = payAmount.toDoubleOrNull()
+                                            if (payVal != null && payVal > 0 && selectedPayAccount != null) {
+                                                viewModel.payEMIInstallment(emi, payVal, selectedPayAccount!!.id)
+                                                showPayDialog = false
+                                            }
+                                        },
+                                        isDark = isDark
+                                    ) {
+                                        Text(
+                                            "Submit Repay",
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Create EMI / Debt Tracker Dialog
+    if (showCreateEMIDialog) {
+        var modeTab by remember(showCreateEMIDialog, selectedCategoryTab) { mutableStateOf(if (selectedCategoryTab == "Installments") "Standard" else "Debt") }
+
+        var emiTitle by remember { mutableStateOf("") }
+        var emiTotal by remember { mutableStateOf("") }
+        var emiPaid by remember { mutableStateOf("") }
+        var emiDueDate by remember { mutableStateOf("15th") }
+
+        // Debt specific states
+        var debtType by remember { mutableStateOf("Borrowed") } // "Borrowed", "Lent"
+        var debtorName by remember { mutableStateOf("") }
+        var debtTenureMonths by remember { mutableStateOf("12") }
+        var affectAccountBalance by remember { mutableStateOf(false) } // MUST default to false! Let user decide
+        var linkedAccount by remember { mutableStateOf<AccountEntity?>(null) }
+
+        LaunchedEffect(accounts) {
+            if (linkedAccount == null && accounts.isNotEmpty()) {
+                linkedAccount = accounts.first()
+            }
+        }
+
+        Dialog(onDismissRequest = { showCreateEMIDialog = false }) {
+            Surface(
+                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+                shape = RoundedCornerShape(24.dp),
+                color = if (isDark) Color(0xFF111A16) else Color.White
+            ) {
+                Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text(
+                        text = if (modeTab == "Standard") "New Installment Plan" else "New Debt / Loan Record",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
+                    )
+
+                    if (modeTab == "Debt") {
+                        // DEBT FORM PATH
+                        Text(
+                            text = "DEBT TRANSACTION TYPE Selection",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isDark) Color(0xFF90A49E) else Color(0xFF4C5D55)
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            listOf("Borrowed", "Lent").forEach { dt ->
+                                val active = debtType == dt
+                                SkeuomorphicButton(
+                                    onClick = { debtType = dt },
+                                    isDark = isDark,
+                                    isSelected = active,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(
+                                        text = if (dt == "Borrowed") "I Borrowed" else "I Lent",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp,
+                                        color = if (active) {
+                                            if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
+                                        } else {
+                                            if (isDark) Color(0xFF90A49E) else Color(0xFF4C5D55)
+                                        }
+                                    )
+                                }
+                            }
+                        }
+
+                        SkeuomorphicTextField(
+                            value = debtorName,
+                            onValueChange = { debtorName = it },
+                            isDark = isDark,
+                            label = { Text("Person / Entity Name (e.g. John Doe)") }
+                        )
+
+                        SkeuomorphicTextField(
+                            value = emiTotal,
+                            onValueChange = { emiTotal = it },
+                            isDark = isDark,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            label = { Text("Principal Total Amount ($currency)") }
+                        )
+
+                        SkeuomorphicTextField(
+                            value = emiPaid,
+                            onValueChange = { emiPaid = it },
+                            isDark = isDark,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            label = { Text("Initial Amount Already Repaid ($currency)") }
+                        )
+
+                        SkeuomorphicTextField(
+                            value = debtTenureMonths,
+                            onValueChange = { debtTenureMonths = it },
+                            isDark = isDark,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            label = { Text("Tenure Entry (in months, e.g. 12)") }
+                        )
+
+                        DatePickerField(
+                            value = emiDueDate,
+                            label = "Monthly Due Day",
+                            onClick = {
+                                showAndroidDatePicker(context, System.currentTimeMillis()) { time ->
+                                    val cal = Calendar.getInstance().apply { timeInMillis = time }
+                                    val day = cal.get(Calendar.DAY_OF_MONTH)
+                                    val suffix = when (day % 10) {
+                                        1 -> if (day == 11) "th" else "st"
+                                        2 -> if (day == 12) "th" else "nd"
+                                        3 -> if (day == 13) "th" else "rd"
+                                        else -> "th"
+                                    }
+                                    emiDueDate = "$day$suffix"
+                                }
+                            }
+                        )
+
+                        // Option to add/subtract debt/lend amount from any account in vault by default (defaults to false)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Affect Vault Balance instantly?",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    color = if (isDark) Color(0xFFE4F0EC) else Color(0xFF101B17)
+                                )
+                                Text(
+                                    text = "Adjust funds from active account now",
+                                    fontSize = 11.sp,
+                                    color = if (isDark) Color(0xFF90A49E) else Color(0xFF4C5D55)
+                                )
+                            }
+                            Switch(
+                                checked = affectAccountBalance,
+                                onCheckedChange = { affectAccountBalance = it },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309),
+                                    checkedTrackColor = (if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)).copy(alpha = 0.3f)
+                                )
+                            )
+                        }
+
+                        if (affectAccountBalance && accounts.isNotEmpty()) {
+                            Text(
+                                text = "Choose Account To Balance:",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isDark) Color(0xFFE4F0EC) else Color(0xFF101B17)
+                            )
+                            Row(
+                                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                accounts.forEach { acc ->
+                                    val isSelected = linkedAccount?.id == acc.id
+                                    SkeuomorphicButton(
+                                        onClick = { linkedAccount = acc },
+                                        isDark = isDark,
+                                        isSelected = isSelected,
+                                        modifier = Modifier.widthIn(min = 90.dp)
+                                    ) {
+                                        Text(
+                                            text = acc.name,
+                                            fontSize = 12.sp,
+                                            color = if (isSelected) {
+                                                if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
+                                            } else {
+                                                if (isDark) Color(0xFF90A49E) else Color(0xFF4C5D55)
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                    } else {
+                        // STANDARD INSTALLMENT PATH
+                        SkeuomorphicTextField(
+                            value = emiTitle,
+                            onValueChange = { emiTitle = it },
+                            isDark = isDark,
+                            label = { Text("Installment Name (e.g. Car Loan)") }
+                        )
+
+                        SkeuomorphicTextField(
+                            value = emiTotal,
+                            onValueChange = { emiTotal = it },
+                            isDark = isDark,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            label = { Text("Total Payment Obligation") }
+                        )
+
+                        SkeuomorphicTextField(
+                            value = emiPaid,
+                            onValueChange = { emiPaid = it },
+                            isDark = isDark,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            label = { Text("Already Repaid Amount") }
+                        )
+
+                        DatePickerField(
+                            value = emiDueDate,
+                            label = "Monthly Due Day",
+                            onClick = {
+                                showAndroidDatePicker(context, System.currentTimeMillis()) { time ->
+                                    val cal = Calendar.getInstance().apply { timeInMillis = time }
+                                    val day = cal.get(Calendar.DAY_OF_MONTH)
+                                    val suffix = when (day % 10) {
+                                        1 -> if (day == 11) "th" else "st"
+                                        2 -> if (day == 12) "th" else "nd"
+                                        3 -> if (day == 13) "th" else "rd"
+                                        else -> "th"
+                                    }
+                                    emiDueDate = "$day$suffix"
+                                }
+                            }
+                        )
+                    }
+
+                    Row(modifier = Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.End) {
+                        TextButton(onClick = { showCreateEMIDialog = false }) {
+                            Text("Cancel", color = Color.Gray)
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        SkeuomorphicButton(
+                            onClick = {
+                                val tot = emiTotal.toDoubleOrNull() ?: 0.0
+                                val pd = emiPaid.toDoubleOrNull() ?: 0.0
+                                val dayVal = emiDueDate.filter { it.isDigit() }.toIntOrNull() ?: 15
+                                
+                                if (modeTab == "Debt") {
+                                    if (debtorName.isNotBlank() && tot > 0) {
+                                        val finalTitle = "Debt: $debtType ($debtorName)"
+                                        val tenure = debtTenureMonths.toIntOrNull() ?: 12
+                                        
+                                        // 1. Create the EMI tracking record
+                                        viewModel.addEMI(
+                                            title = finalTitle,
+                                            total = tot,
+                                            paid = pd,
+                                            dueDate = emiDueDate,
+                                            isDebt = true,
+                                            debtType = debtType,
+                                            personName = debtorName,
+                                            tenureMonths = tenure
+                                        )
+                                        
+                                        com.example.receiver.EmiAlarmScheduler.scheduleEmiAlert(context, finalTitle, dayVal)
+
+                                        // 2. Adjust funds if requested
+                                        if (affectAccountBalance && linkedAccount != null) {
+                                            val finalType = if (debtType == "Borrowed") "Income" else "Expense"
+                                            viewModel.addTransaction(
+                                                amount = tot - pd,
+                                                type = finalType,
+                                                categoryId = null,
+                                                accountId = linkedAccount!!.id,
+                                                transferToAccountId = null,
+                                                date = System.currentTimeMillis(),
+                                                note = "[Debt Track Initialized] $debtType from/to $debtorName"
+                                            )
+                                        }
+
+                                        showCreateEMIDialog = false
+                                    } else {
+                                        Toast.makeText(context, "Please enter valid debt amount and person", Toast.LENGTH_SHORT).show()
+                                    }
+                                } else {
+                                    if (emiTitle.isNotBlank() && tot > 0) {
+                                        viewModel.addEMI(emiTitle, tot, pd, emiDueDate)
+                                        com.example.receiver.EmiAlarmScheduler.scheduleEmiAlert(context, emiTitle, dayVal)
+                                        showCreateEMIDialog = false
+                                    } else {
+                                        Toast.makeText(context, "Please enter a valid plan name and total obligation", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            },
+                            isDark = isDark
+                        ) {
+                            Text(
+                                "Create Track",
+                                fontWeight = FontWeight.Bold,
+                                color = if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

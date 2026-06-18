@@ -1,0 +1,6 @@
+{
+  "name": "CashFlow",
+  "description": "CashFlow: A premium offline-first money manager for tracking income, expenses, accounts, budgets, and debts.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
