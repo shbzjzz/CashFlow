@@ -2,26 +2,26 @@ package com.example.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Modern Minimalist Primary - Subtle Slate Blue
-val CashFlowPrimary = Color(0xFF475569) // Slate-600 - Elegant neutral-blue
-val CashFlowPrimaryDark = Color(0xFF1E293B) // Slate-800 - Deep variant
-val CashFlowSecondary = Color(0xFF64748B) // Slate-500 - Softer secondary
-val CashFlowLightTeal = Color(0xFFF1F5F9) // Slate-100 - Minimal accent
+// ── Primary Indigo Palette ───────────────────────────────────────
+val CashFlowPrimary     = Color(0xFF6366F1) // Indigo-500 — vibrant, premium
+val CashFlowPrimaryDark = Color(0xFF818CF8) // Indigo-400 — lighter for dark mode
+val CashFlowSecondary   = Color(0xFF8B5CF6) // Violet-500 — complementary accent
+val CashFlowLightIndigo = Color(0xFFEEF2FF) // Indigo-50  — soft tinted surface
 
-// Clean, Minimal Light Theme
-val BackgroundLight = Color(0xFFFAFAFA) // Nearly white, minimal tint
-val SurfaceLight = Color(0xFFFFFFFF) // Pure white
-val TextLight = Color(0xFF1F2937) // Gray-800 - High contrast, readable
-val SecondaryTextLight = Color(0xFF6B7280) // Gray-500 - Softer text
+// ── Light Theme ─────────────────────────────────────────────────
+val BackgroundLight     = Color(0xFFF8F9FF) // Slightly indigo-tinted off-white
+val SurfaceLight        = Color(0xFFFFFFFF) // Pure white cards
+val TextLight           = Color(0xFF1E1B4B) // Indigo-950 — deep readable text
+val SecondaryTextLight  = Color(0xFF6B7280) // Gray-500
 
-// Refined Dark Theme
-val BackgroundDark = Color(0xFF0F172A) // Slate-900 - Deep background
-val SurfaceDark = Color(0xFF1E293B) // Slate-800 - Subtle cards
-val TextDark = Color(0xFFE5E7EB) // Gray-200
-val SecondaryTextDark = Color(0xFF9CA3AF) // Gray-400
+// ── Dark Theme ──────────────────────────────────────────────────
+val BackgroundDark      = Color(0xFF0F0F1A) // Near-black with indigo cast
+val SurfaceDark         = Color(0xFF1C1C2E) // Elevated dark surface
+val TextDark            = Color(0xFFE0E7FF) // Indigo-100 — warm white text
+val SecondaryTextDark   = Color(0xFF9CA3AF) // Gray-400
 
-// Functional Colors - Minimal & Modern
-val ErrorRed = Color(0xFFDC2626) // Red-600 - Cleaner red
-val SuccessGreen = Color(0xFF059669) // Emerald-600 - Sophisticated green
-val WarningOrange = Color(0xFFD97706) // Amber-600 - Minimal orange
-val InfoBlue = Color(0xFF0891B2) // Cyan-600 - Clean blue
+// ── Functional Colors ───────────────────────────────────────────
+val SuccessGreen        = Color(0xFF10B981) // Emerald-500
+val ErrorRed            = Color(0xFFEF4444) // Red-500
+val WarningOrange       = Color(0xFFF59E0B) // Amber-500
+val IndigoGlow          = Color(0x1A6366F1) // Indigo/10% — subtle glow tint
