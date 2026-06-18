@@ -17,10 +17,10 @@ private val DarkColorScheme = darkColorScheme(
     tertiary = SuccessGreen,
     background = BackgroundDark,
     surface = SurfaceDark,
-    onPrimary = Color.Black,
+    onPrimary = Color.White,
     onBackground = TextDark,
     onSurface = TextDark,
-    surfaceVariant = Color(0xFF1E293B),
+    surfaceVariant = Color(0xFF334155),
     onSurfaceVariant = SecondaryTextDark,
     error = ErrorRed
 )
@@ -34,7 +34,7 @@ private val LightColorScheme = lightColorScheme(
     onPrimary = Color.White,
     onBackground = TextLight,
     onSurface = TextLight,
-    surfaceVariant = Color(0xFFE2E8F0),
+    surfaceVariant = Color(0xFFF3F4F6),
     onSurfaceVariant = SecondaryTextLight,
     error = ErrorRed
 )

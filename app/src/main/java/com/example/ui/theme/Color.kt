@@ -2,22 +2,26 @@ package com.example.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val CashFlowPrimary = Color(0xFF0D9488) // Vibrant Premium Teal
-val CashFlowPrimaryDark = Color(0xFF114D4D) // Dark Teal for Dark Mode Primary variant
-val CashFlowSecondary = Color(0xFF14B8A6) // Tech Teal Accent
-val CashFlowLightTeal = Color(0xFFE6F4F1) // Soft Light Tech Mint Accent
+// Modern Minimalist Primary - Subtle Slate Blue
+val CashFlowPrimary = Color(0xFF475569) // Slate-600 - Elegant neutral-blue
+val CashFlowPrimaryDark = Color(0xFF1E293B) // Slate-800 - Deep variant
+val CashFlowSecondary = Color(0xFF64748B) // Slate-500 - Softer secondary
+val CashFlowLightTeal = Color(0xFFF1F5F9) // Slate-100 - Minimal accent
 
-val BackgroundLight = Color(0xFFF4F7F6) // Fresh Soft clean background
-val SurfaceLight = Color(0xFFFFFFFF)
-val TextLight = Color(0xFF0F172A) // Slate-900 (modern high-contrast typography)
-val SecondaryTextLight = Color(0xFF475569) // Slate-600
+// Clean, Minimal Light Theme
+val BackgroundLight = Color(0xFFFAFAFA) // Nearly white, minimal tint
+val SurfaceLight = Color(0xFFFFFFFF) // Pure white
+val TextLight = Color(0xFF1F2937) // Gray-800 - High contrast, readable
+val SecondaryTextLight = Color(0xFF6B7280) // Gray-500 - Softer text
 
-val BackgroundDark = Color(0xFF0F172A) // Slate-900 Elegant Dark background
-val SurfaceDark = Color(0xFF1E293B) // Slate-800 Premium Card Surfaces
-val TextDark = Color(0xFFF1F5F9) // Slate-100
-val SecondaryTextDark = Color(0xFF94A3B8) // Slate-400
+// Refined Dark Theme
+val BackgroundDark = Color(0xFF0F172A) // Slate-900 - Deep background
+val SurfaceDark = Color(0xFF1E293B) // Slate-800 - Subtle cards
+val TextDark = Color(0xFFE5E7EB) // Gray-200
+val SecondaryTextDark = Color(0xFF9CA3AF) // Gray-400
 
-val ErrorRed = Color(0xFFEF4444) // Bright Modern Red
-val SuccessGreen = Color(0xFF10B981) // Bright Modern Green
-
-
+// Functional Colors - Minimal & Modern
+val ErrorRed = Color(0xFFDC2626) // Red-600 - Cleaner red
+val SuccessGreen = Color(0xFF059669) // Emerald-600 - Sophisticated green
+val WarningOrange = Color(0xFFD97706) // Amber-600 - Minimal orange
+val InfoBlue = Color(0xFF0891B2) // Cyan-600 - Clean blue
