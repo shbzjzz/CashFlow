@@ -1,8 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item
-        android:width="72dp"
-        android:height="72dp"
-        android:drawable="@drawable/ic_cashflow_logo_1781772507788"
-        android:gravity="center" />
-</layer-list>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Bar 1 — short (left) -->
+    <path
+        android:pathData="M26,78 L26,60 Q26,56 30,56 L38,56 Q42,56 42,60 L42,78 Z"
+        android:fillColor="#FFFFFF"/>
+
+    <!-- Bar 2 — medium (center) -->
+    <path
+        android:pathData="M48,78 L48,46 Q48,42 52,42 L60,42 Q64,42 64,46 L64,78 Z"
+        android:fillColor="#FFFFFF"/>
+
+    <!-- Bar 3 — tall (right) -->
+    <path
+        android:pathData="M70,78 L70,32 Q70,28 74,28 L82,28 Q86,28 86,32 L86,78 Z"
+        android:fillColor="#FFFFFF"/>
+
+    <!-- Upward arrow on top of bar 3 -->
+    <path
+        android:pathData="M78,18 L86,30 L70,30 Z"
+        android:fillColor="#FFFFFF"/>
+
+    <!-- Baseline -->
+    <path
+        android:pathData="M22,80 L90,80"
+        android:strokeColor="#AAFFFFFF"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"/>
+
+    <!-- Trend line connecting bar tops -->
+    <path
+        android:pathData="M34,56 L56,42 L78,28"
+        android:strokeColor="#7FFFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="@android:color/transparent"/>
+</vector>

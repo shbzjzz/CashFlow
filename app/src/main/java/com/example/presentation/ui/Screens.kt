@@ -54,7 +54,17 @@ import androidx.navigation.compose.rememberNavController
 import com.example.data.model.*
 import com.example.presentation.viewmodel.*
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.ui.unit.IntOffset
 import com.example.ui.theme.SuccessGreen
+import com.example.ui.theme.CashFlowPrimary
+import com.example.ui.theme.IndigoGlow
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
@@ -250,83 +260,93 @@ fun LoginScreen(viewModel: WealthViewModel) {
     var showGoogleSelector by remember { mutableStateOf(false) }
     var rawEmailInput by remember { mutableStateOf("") }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(24.dp)
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        MaterialTheme.colorScheme.primary,
+                        MaterialTheme.colorScheme.secondary,
+                        MaterialTheme.colorScheme.background
+                    ),
+                    startY = 0f,
+                    endY = 900f
+                )
+            )
     ) {
-        // CashFlow Logo Card with teal ambient glow shadow
-        SkeuomorphicCard(
+        Column(
             modifier = Modifier
-                .size(100.dp)
-                .padding(bottom = 8.dp),
-            isDark = isDark,
-            shape = RoundedCornerShape(26.dp)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 28.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Spacer(modifier = Modifier.height(60.dp))
+
+            // ── App Icon ──────────────────────────────────────
+            Box(
+                modifier = Modifier
+                    .size(96.dp)
+                    .background(Color.White.copy(alpha = 0.18f), RoundedCornerShape(28.dp)),
+                contentAlignment = Alignment.Center
+            ) {
                 Icon(
-                    imageVector = Icons.Default.AccountCircle,
+                    imageVector = Icons.Default.TrendingUp,
                     contentDescription = "CashFlow Logo",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(54.dp)
+                    tint = Color.White,
+                    modifier = Modifier.size(52.dp)
                 )
             }
-        }
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-        Text(
-            text = "CASHFLOW",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Black,
-            color = MaterialTheme.colorScheme.primary,
-            letterSpacing = 2.sp
-        )
+            Text(
+                text = "CashFlow",
+                style = MaterialTheme.typography.displayMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+            Text(
+                text = "Your personal finance companion",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White.copy(alpha = 0.80f),
+                textAlign = TextAlign.Center
+            )
 
-        Text(
-            text = "Premium Modern FinTech Experience",
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
+            Spacer(modifier = Modifier.height(48.dp))
 
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // GOOGLE SIGN IN CARD
-        SkeuomorphicCard(
-            modifier = Modifier.fillMaxWidth(),
-            isDark = isDark
-        ) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+            // ── Sign-in Card ──────────────────────────────────
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 0.dp
             ) {
-                Text(
-                    text = "SECURE GOOGLE USER SIGN-IN",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Sign in to continue",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Securely authenticate with Google to sync and manage your finances.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
 
-                Text(
-                    text = "Authenticate securely to unlock and synchronize your cash ledger with the Firebase secure backend.",
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    lineHeight = 18.sp,
-                    textAlign = TextAlign.Center
-                )
+                    Spacer(modifier = Modifier.height(4.dp))
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                SkeuomorphicButton(
-                    onClick = {
-                        if (isSigningIn) return@SkeuomorphicButton
-                        isSigningIn = true
+                    Button(
+                        onClick = {
+                            if (isSigningIn) return@Button
+                            isSigningIn = true
 
                         coroutineScope.launch {
                             try {
@@ -369,26 +389,33 @@ fun LoginScreen(viewModel: WealthViewModel) {
                             }
                         }
                     },
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    isDark = isDark,
-                    isSelected = true
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 ) {
                     if (isSigningIn) {
-                        CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(24.dp))
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(22.dp),
+                            strokeWidth = 2.dp
+                        )
                     } else {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-                            Icon(Icons.Default.Star, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onPrimary)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                "Continue with Google",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
-                            )
-                        }
+                        Icon(Icons.Default.AccountCircle, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text("Continue with Google", style = MaterialTheme.typography.labelLarge)
                     }
                 }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
             }
+
+            Spacer(modifier = Modifier.height(60.dp))
         }
+    }
 
         // ==========================================
         // DYNAMIC GOOGLE ACCOUNT SELECTOR DIALOG (No hardcoded emails)
@@ -603,7 +630,6 @@ fun LoginScreen(viewModel: WealthViewModel) {
                 }
             }
         }
-    }
 }
 
 @Composable
@@ -620,235 +646,240 @@ fun DrawerContent(
     var newTempName by remember { mutableStateOf("") }
     val currentRoute = navController.currentBackStackEntryFlow.collectAsState(initial = null).value?.destination?.route
 
+    val drawerBg = MaterialTheme.colorScheme.surface
+    val accent = MaterialTheme.colorScheme.primary
+    val onAccent = MaterialTheme.colorScheme.onPrimary
+    val primaryText = MaterialTheme.colorScheme.onSurface
+    val subtleText = MaterialTheme.colorScheme.onSurfaceVariant
+    val dividerC = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+
+    val navItems = listOf(
+        NavigationItem("Home",           Routes.DASHBOARD, Icons.Default.Home),
+        NavigationItem("Reports",        Routes.REPORTS,   Icons.Default.BarChart),
+        NavigationItem("Wallets",        Routes.ACCOUNTS,  Icons.Default.AccountBalanceWallet),
+        NavigationItem("EMIs & Debts",   Routes.EMIS,      Icons.Default.CreditScore),
+        NavigationItem("Settings",       Routes.SETTINGS,  Icons.Default.Settings)
+    )
+
     Column(
         modifier = Modifier
             .fillMaxHeight()
-            .width(280.dp)
-            .background(if (isDark) Color(0xFF090F0D) else Color(0xFFEFF3F1))
-            .padding(16.dp),
+            .width(290.dp)
+            .background(drawerBg)
+            .windowInsetsPadding(WindowInsets.statusBars),
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            // Profile Card Section
-            SkeuomorphicCard(
-                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                isDark = isDark
+        Column {
+            // ── Gradient Header ──────────────────────────────
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Brush.linearGradient(
+                            listOf(
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.colorScheme.secondary
+                            )
+                        )
+                    )
+                    .padding(24.dp)
             ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // Avatar
                     Box(
                         modifier = Modifier
-                            .size(60.dp)
-                            .clip(CircleShape)
-                            .background(
-                                Brush.linearGradient(
-                                    listOf(Color(0xFFFBBF24), Color(0xFFD97706))
-                                )
-                            ),
+                            .size(64.dp)
+                            .background(Color.White.copy(alpha = 0.20f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = if (username.isNotEmpty()) username.take(2).uppercase() else "EG",
+                            text = if (username.isNotEmpty()) username.take(2).uppercase() else "CF",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp,
-                            color = Color(0xFF111917)
+                            fontSize = 24.sp,
+                            color = Color.White
                         )
                     }
-
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
+                    // Name + edit
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = if (username.isNotEmpty()) username else "Guest",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            color = Color.White,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        IconButton(
+                            onClick = { newTempName = username; showEditNameDialog = true },
+                            modifier = Modifier.size(22.dp)
                         ) {
-                            Text(
-                                text = username,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp,
-                                color = if (isDark) Color(0xFFE4F0EC) else Color(0xFF0E1915),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            IconButton(
-                                onClick = {
-                                    newTempName = username
-                                    showEditNameDialog = true
-                                },
-                                modifier = Modifier.size(18.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.Edit,
-                                    contentDescription = "Edit name",
-                                    tint = if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309),
-                                    modifier = Modifier.size(14.dp)
-                                )
-                            }
-                        }
-                        val emailStr = userEmail
-                        if (emailStr != null) {
-                            Text(
-                                text = emailStr,
-                                fontSize = 11.sp,
-                                color = if (isDark) Color(0xFF90A49E) else Color(0xFF4C5D55)
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = "Edit name",
+                                tint = Color.White.copy(alpha = 0.8f),
+                                modifier = Modifier.size(14.dp)
                             )
                         }
+                    }
+                    // Email
+                    userEmail?.let {
+                        Text(
+                            text = it,
+                            fontSize = 12.sp,
+                            color = Color.White.copy(alpha = 0.75f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
+
+            // ── App label ────────────────────────────────────
             Text(
-                text = "NAVIGATION PORTAL",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (isDark) Color(0xFF90A49E) else Color(0xFF3B524B),
-                modifier = Modifier.padding(horizontal = 8.dp)
+                text = "CASHFLOW",
+                style = MaterialTheme.typography.labelSmall,
+                color = subtleText,
+                letterSpacing = 2.sp,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
             )
 
-            // Nav Items List
-            val items = listOf(
-                NavigationItem("Dashboard", Routes.DASHBOARD, Icons.Default.Home),
-                NavigationItem("Reports & Budgets", Routes.REPORTS, Icons.Default.Star),
-                NavigationItem("Vaults & Accounts", Routes.ACCOUNTS, Icons.Default.Lock),
-                NavigationItem("Installments & Debts", Routes.EMIS, Icons.Default.KeyboardArrowUp),
-                NavigationItem("Settings", Routes.SETTINGS, Icons.Default.Settings)
-            )
-
-            items.forEach { item ->
+            // ── Nav Items ─────────────────────────────────────
+            navItems.forEach { item ->
                 val selected = currentRoute == item.route
-                SkeuomorphicButton(
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        if (currentRoute != item.route) {
-                            navController.navigate(item.route) {
-                                popUpTo(Routes.DASHBOARD) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 2.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            if (selected) accent.copy(alpha = 0.12f)
+                            else Color.Transparent
+                        )
+                        .clickable {
+                            scope.launch { drawerState.close() }
+                            if (currentRoute != item.route) {
+                                navController.navigate(item.route) {
+                                    popUpTo(Routes.DASHBOARD) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
                             }
                         }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    isDark = isDark,
-                    isSelected = selected
+                        .padding(horizontal = 16.dp, vertical = 13.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Start
-                    ) {
-                        Icon(
-                            item.icon,
-                            contentDescription = item.title,
-                            tint = if (selected) {
-                                if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
-                            } else {
-                                if (isDark) Color(0xFF90A49E) else Color(0xFF4C5D55)
-                            },
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = item.title,
-                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                            fontSize = 13.sp,
-                            color = if (selected) {
-                                if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
-                            } else {
-                                if (isDark) Color(0xFFE4F0EC) else Color(0xFF0E1915)
-                            }
-                        )
-                    }
+                    // Active indicator bar
+                    Box(
+                        modifier = Modifier
+                            .width(3.dp)
+                            .height(20.dp)
+                            .background(
+                                if (selected) accent else Color.Transparent,
+                                RoundedCornerShape(2.dp)
+                            )
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Icon(
+                        item.icon,
+                        contentDescription = item.title,
+                        tint = if (selected) accent else subtleText,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Text(
+                        text = item.title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                        color = if (selected) accent else primaryText
+                    )
                 }
             }
+
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                color = dividerC
+            )
         }
 
-        // Logout Section
-        SkeuomorphicButton(
-            onClick = {
-                scope.launch { drawerState.close() }
-                viewModel.logoutGoogle()
-            },
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-            isDark = isDark
+        // ── Sign Out ──────────────────────────────────────────
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp)
+                .padding(bottom = 20.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.error.copy(alpha = 0.08f))
+                .clickable {
+                    scope.launch { drawerState.close() }
+                    viewModel.logoutGoogle()
+                }
+                .padding(horizontal = 16.dp, vertical = 13.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Start
-            ) {
-                Icon(
-                    Icons.Default.ExitToApp,
-                    contentDescription = "Log Out",
-                    tint = if (isDark) Color(0xFFEF4444) else Color(0xFFDC2626)
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = "Sign Out Google Acc",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
-                    color = if (isDark) Color(0xFFEF4444) else Color(0xFFDC2626)
-                )
-            }
+            Icon(
+                Icons.Default.ExitToApp,
+                contentDescription = "Sign Out",
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(14.dp))
+            Text(
+                text = "Sign Out",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.error
+            )
         }
     }
 
-    // Edit Name Dialogue popup
+    // ── Edit Name Dialog ──────────────────────────────────────────
     if (showEditNameDialog) {
         Dialog(onDismissRequest = { showEditNameDialog = false }) {
-            Box(
-                modifier = Modifier
-                    .width(320.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(if (isDark) Color(0xFF111917) else Color(0xFFF1F5F3))
+            Surface(
+                modifier = Modifier.width(300.dp),
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 4.dp
             ) {
                 Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Text(
-                        text = "Edit Active Name",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
+                        "Edit Display Name",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
-
                     SkeuomorphicTextField(
                         value = newTempName,
                         onValueChange = { newTempName = it },
-                        placeholder = { Text("Display Name") },
+                        placeholder = { Text("Your name") },
                         isDark = isDark,
                         modifier = Modifier.fillMaxWidth()
                     )
-
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        SkeuomorphicButton(
-                            onClick = { showEditNameDialog = false },
-                            isDark = isDark,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Cancel", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        TextButton(onClick = { showEditNameDialog = false }) {
+                            Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-
-                        SkeuomorphicButton(
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
                             onClick = {
                                 if (newTempName.isNotBlank()) {
                                     viewModel.updateUsername(newTempName)
                                     showEditNameDialog = false
                                 }
                             },
-                            isDark = isDark,
-                            isSelected = true,
-                            modifier = Modifier.weight(1f)
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = accent)
                         ) {
-                            Text(
-                                "Confirm",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (isDark) Color(0xFF111917) else Color.White
-                            )
+                            Text("Save", style = MaterialTheme.typography.labelLarge)
                         }
                     }
                 }
@@ -926,9 +957,27 @@ fun AppNavigation(viewModel: WealthViewModel) {
                             }
                         )
                     } else {
+                        val slideSpec = tween<IntOffset>(300)
+                        val fadeSpec = tween<Float>(250)
                         NavHost(
                             navController = navController,
-                            startDestination = Routes.DASHBOARD
+                            startDestination = Routes.DASHBOARD,
+                            enterTransition = {
+                                slideInHorizontally(animationSpec = slideSpec) { it / 4 } +
+                                fadeIn(animationSpec = fadeSpec)
+                            },
+                            exitTransition = {
+                                slideOutHorizontally(animationSpec = slideSpec) { -it / 4 } +
+                                fadeOut(animationSpec = fadeSpec)
+                            },
+                            popEnterTransition = {
+                                slideInHorizontally(animationSpec = slideSpec) { -it / 4 } +
+                                fadeIn(animationSpec = fadeSpec)
+                            },
+                            popExitTransition = {
+                                slideOutHorizontally(animationSpec = slideSpec) { it / 4 } +
+                                fadeOut(animationSpec = fadeSpec)
+                            }
                         ) {
                             composable(Routes.DASHBOARD) {
                                 DashboardScreen(
@@ -990,15 +1039,16 @@ fun BottomNavBar(navController: NavController) {
     val currentRoute = navController.currentBackStackEntryFlow.collectAsState(initial = null).value?.destination?.route
 
     NavigationBar(
-        tonalElevation = 8.dp,
-        modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars)
+        modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars),
+        containerColor = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp
     ) {
         val items = listOf(
-            NavigationItem("Dashboard", Routes.DASHBOARD, Icons.Default.Home),
-            NavigationItem("Reports", Routes.REPORTS, Icons.Default.Star),
-            NavigationItem("Vaults", Routes.ACCOUNTS, Icons.Default.Lock),
-            NavigationItem("EMIs", Routes.EMIS, Icons.Default.KeyboardArrowUp),
-            NavigationItem("Settings", Routes.SETTINGS, Icons.Default.Settings)
+            NavigationItem("Home",     Routes.DASHBOARD, Icons.Default.Home),
+            NavigationItem("Reports",  Routes.REPORTS,   Icons.Default.BarChart),
+            NavigationItem("Wallets",  Routes.ACCOUNTS,  Icons.Default.AccountBalanceWallet),
+            NavigationItem("EMIs",     Routes.EMIS,      Icons.Default.CreditScore),
+            NavigationItem("Settings", Routes.SETTINGS,  Icons.Default.Settings)
         )
 
         items.forEach { item ->
@@ -1014,8 +1064,27 @@ fun BottomNavBar(navController: NavController) {
                         }
                     }
                 },
-                icon = { Icon(item.icon, contentDescription = item.title) },
-                label = { Text(item.title, fontSize = 10.sp) },
+                icon = {
+                    Icon(
+                        item.icon,
+                        contentDescription = item.title,
+                        modifier = Modifier.size(22.dp)
+                    )
+                },
+                label = {
+                    Text(
+                        item.title,
+                        fontSize = 10.sp,
+                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+                    )
+                },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = MaterialTheme.colorScheme.primary,
+                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                    indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                ),
                 modifier = Modifier.testTag("nav_tab_${item.route}")
             )
         }
@@ -1031,88 +1100,118 @@ fun PinLockScreen(
     onNumberClick: (String) -> Unit,
     onDeleteClick: () -> Unit
 ) {
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF003527)) // Premium Emerald Dark background
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color(0xFF312E81), Color(0xFF4C1D95), Color(0xFF0F0F1A))
+                )
+            ),
+        contentAlignment = Alignment.Center
     ) {
-        Icon(
-            imageVector = Icons.Default.Lock,
-            contentDescription = "App Locked",
-            tint = Color(0xFF80BEA6),
-            modifier = Modifier.size(64.dp)
-        )
-        Spacer(modifier = Modifier.height(24.dp))
-        Text(
-            text = "CashFlow Vault Protected",
-            color = Color.White,
-            fontWeight = FontWeight.Bold,
-            fontSize = 22.sp
-        )
-        Text(
-            text = "Enter 4-digit PIN to Unlock",
-            color = Color(0xFF80BEA6),
-            fontSize = 14.sp
-        )
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Dots indicating entry
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.padding(16.dp)
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
-            for (i in 1..4) {
-                val filled = enteredPin.length >= i
-                Box(
-                    modifier = Modifier
-                        .size(20.dp)
-                        .clip(CircleShape)
-                        .background(if (filled) Color.White else Color(0xFF0B513D))
-                        .border(1.5.dp, Color(0xFF80BEA6), CircleShape)
+            // ── Lock Icon ──────────────────────────────────────
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .background(Color.White.copy(alpha = 0.12f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Lock,
+                    contentDescription = "App Locked",
+                    tint = Color.White,
+                    modifier = Modifier.size(40.dp)
                 )
             }
-        }
 
-        Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-        // Grid of numbers
-        val numbers = listOf(
-            listOf("1", "2", "3"),
-            listOf("4", "5", "6"),
-            listOf("7", "8", "9"),
-            listOf("", "0", "DEL")
-        )
+            Text(
+                text = "CashFlow",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+            Text(
+                text = "Enter your 4-digit PIN",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White.copy(alpha = 0.65f)
+            )
 
-        Column(
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            numbers.forEach { row ->
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(24.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    row.forEach { char ->
-                        if (char.isEmpty()) {
-                            Spacer(modifier = Modifier.size(72.dp))
-                        } else {
-                            Button(
-                                onClick = {
-                                    if (char == "DEL") onDeleteClick() else onNumberClick(char)
-                                },
-                                modifier = Modifier
-                                    .size(72.dp)
-                                    .testTag("pin_${char}"),
-                                shape = CircleShape,
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFF064E3B),
-                                    contentColor = Color.White
-                                )
-                            ) {
-                                Text(char, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            Spacer(modifier = Modifier.height(36.dp))
+
+            // ── PIN Dots ───────────────────────────────────────
+            Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                for (i in 1..4) {
+                    val filled = enteredPin.length >= i
+                    Box(
+                        modifier = Modifier
+                            .size(18.dp)
+                            .background(
+                                if (filled) Color.White else Color.White.copy(alpha = 0.25f),
+                                CircleShape
+                            )
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(48.dp))
+
+            // ── Number Grid ────────────────────────────────────
+            val numbers = listOf(
+                listOf("1", "2", "3"),
+                listOf("4", "5", "6"),
+                listOf("7", "8", "9"),
+                listOf("", "0", "DEL")
+            )
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                numbers.forEach { row ->
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(20.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        row.forEach { char ->
+                            if (char.isEmpty()) {
+                                Spacer(modifier = Modifier.size(74.dp))
+                            } else if (char == "DEL") {
+                                IconButton(
+                                    onClick = { onDeleteClick() },
+                                    modifier = Modifier
+                                        .size(74.dp)
+                                        .background(Color.White.copy(alpha = 0.10f), CircleShape)
+                                        .testTag("pin_DEL")
+                                ) {
+                                    Icon(
+                                        Icons.Default.Backspace,
+                                        contentDescription = "Delete",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            } else {
+                                Button(
+                                    onClick = { onNumberClick(char) },
+                                    modifier = Modifier
+                                        .size(74.dp)
+                                        .testTag("pin_${char}"),
+                                    shape = CircleShape,
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color.White.copy(alpha = 0.15f),
+                                        contentColor = Color.White
+                                    ),
+                                    elevation = ButtonDefaults.buttonElevation(0.dp)
+                                ) {
+                                    Text(char, fontSize = 22.sp, fontWeight = FontWeight.Medium)
+                                }
                             }
                         }
                     }
@@ -1256,31 +1355,63 @@ fun DashboardScreen(
             }
         }
 
-        // Net Worth Card (Hero style)
+        // Net Worth Hero Card — gradient
         item {
-            Card(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .testTag("net_worth_card"),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)
+                    .testTag("net_worth_card")
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(
+                        Brush.linearGradient(
+                            listOf(
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.colorScheme.secondary
+                            )
+                        )
+                    )
+                    .padding(24.dp)
             ) {
-                Box(modifier = Modifier.padding(24.dp)) {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("TOTAL NET WORTH", color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        Text("$currency ${String.format(Locale.getDefault(), "%,.2f", netWorth)}", color = MaterialTheme.colorScheme.onPrimary, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Divider(color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f))
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Column {
-                                Text("Income", color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f), fontSize = 11.sp)
-                                Text("$currency ${String.format(Locale.getDefault(), "%,.1f", totalIncome)}", color = MaterialTheme.colorScheme.onPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.AccountBalanceWallet,
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = 0.75f),
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            "NET WORTH",
+                            color = Color.White.copy(alpha = 0.75f),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            letterSpacing = 1.sp
+                        )
+                    }
+                    Text(
+                        "$currency ${String.format(Locale.getDefault(), "%,.2f", netWorth)}",
+                        color = Color.White,
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.20f))
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Icon(Icons.Default.ArrowUpward, null, tint = Color.White.copy(0.7f), modifier = Modifier.size(12.dp))
+                                Text("Income", color = Color.White.copy(alpha = 0.75f), fontSize = 11.sp)
                             }
-                            Column(horizontalAlignment = Alignment.End) {
-                                Text("Expense", color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f), fontSize = 11.sp)
-                                Text("$currency ${String.format(Locale.getDefault(), "%,.1f", totalExpense)}", color = MaterialTheme.colorScheme.onPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                            Text("$currency ${String.format(Locale.getDefault(), "%,.1f", totalIncome)}", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Icon(Icons.Default.ArrowDownward, null, tint = Color.White.copy(0.7f), modifier = Modifier.size(12.dp))
+                                Text("Expense", color = Color.White.copy(alpha = 0.75f), fontSize = 11.sp)
                             }
+                            Text("$currency ${String.format(Locale.getDefault(), "%,.1f", totalExpense)}", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -1440,7 +1571,7 @@ fun DashboardScreen(
         }
     }
 
-    // Centered FAB for Adding Transaction (Quick entry)
+    // FAB — Add Transaction
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -1449,8 +1580,8 @@ fun DashboardScreen(
     ) {
         FloatingActionButton(
             onClick = { navController.navigate(Routes.ADD_TRANSACTION) },
-            containerColor = Color(0xFF003527),
-            contentColor = Color.White,
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
             shape = RoundedCornerShape(16.dp),
             modifier = Modifier.testTag("add_transaction_fab")
         ) {
@@ -2008,8 +2139,8 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(if (isDark) Color(0xFF0C1311) else Color(0xFFEFF3F1))
-                    .padding(horizontal = 12.dp, vertical = 14.dp),
+                    .background(MaterialTheme.colorScheme.surface)
+                    .padding(horizontal = 4.dp, vertical = 10.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -2017,30 +2148,26 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
                     Icon(
                         Icons.Default.Close,
                         contentDescription = "Close",
-                        tint = if (isDark) Color(0xFF90A49E) else Color(0xFF3B524B)
+                        tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
                 Text(
                     text = "Add Transaction",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isDark) Color(0xFF34D399) else Color(0xFF003527)
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.width(48.dp))
             }
         },
         bottomBar = {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(if (isDark) Color(0xFF0C1311) else Color(0xFFEFF3F1))
-                    .padding(16.dp)
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                shadowElevation = 8.dp
             ) {
-                SkeuomorphicButton(
+                Button(
                     onClick = {
                         val parsedAmount = amount.toDoubleOrNull()
                         if (parsedAmount != null && parsedAmount > 0 && selectedAccount != null) {
-                            // Regular transaction logging
                             viewModel.addTransaction(
                                 amount = parsedAmount,
                                 type = type,
@@ -2058,20 +2185,19 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(54.dp)
+                        .padding(16.dp)
+                        .height(52.dp)
                         .testTag("submit_button"),
-                    isDark = isDark
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
-                    Text(
-                        text = "Save Transaction",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
-                    )
+                    Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Save Transaction", style = MaterialTheme.typography.labelLarge)
                 }
             }
         },
-        containerColor = if (isDark) Color(0xFF080F0D) else Color(0xFFF4F8F6)
+        containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -2081,80 +2207,87 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Segmented Tab bar using physical/skeuomorphic finish
-            SkeuomorphicCard(
-                modifier = Modifier.fillMaxWidth(),
-                isDark = isDark,
-                shape = RoundedCornerShape(32.dp)
+            // ── Transaction Type Tab ──────────────────────────
+            val typeColors = mapOf(
+                "Income"   to SuccessGreen,
+                "Expense"  to MaterialTheme.colorScheme.error,
+                "Transfer" to MaterialTheme.colorScheme.primary
+            )
+            val typeIcons = mapOf(
+                "Income"   to Icons.Default.ArrowUpward,
+                "Expense"  to Icons.Default.ArrowDownward,
+                "Transfer" to Icons.Default.SwapHoriz
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(16.dp))
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    val tabs = listOf("Income", "Expense", "Transfer")
-                    tabs.forEach { tab ->
-                        val isSelected = type == tab
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(38.dp)
-                                .clip(RoundedCornerShape(24.dp))
-                                .background(
-                                    if (isSelected) {
-                                        if (isDark) Color(0xFF2A3935) else Color.White
-                                    } else Color.Transparent
-                                )
-                                .clickable {
-                                    type = tab
-                                    if (tab != "Transfer") {
-                                        selectedCategory = categories.firstOrNull { it.type == tab }
-                                    }
+                listOf("Income", "Expense", "Transfer").forEach { tab ->
+                    val isSelected = type == tab
+                    val tabColor = typeColors[tab] ?: MaterialTheme.colorScheme.primary
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (isSelected) tabColor.copy(alpha = 0.15f) else Color.Transparent)
+                            .clickable {
+                                type = tab
+                                if (tab != "Transfer") {
+                                    selectedCategory = categories.firstOrNull { it.type == tab }
                                 }
-                                .testTag("type_tab_${tab}"),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = tab,
-                                color = if (isSelected) {
-                                    if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
-                                } else {
-                                    if (isDark) Color(0xFF90A49E) else Color(0xFF3B524B)
-                                },
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                fontSize = 13.sp
-                            )
-                        }
+                            }
+                            .padding(vertical = 10.dp)
+                            .testTag("type_tab_${tab}"),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            typeIcons[tab] ?: Icons.Default.Add,
+                            contentDescription = null,
+                            tint = if (isSelected) tabColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Spacer(modifier = Modifier.width(5.dp))
+                        Text(
+                            tab,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (isSelected) tabColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                        )
                     }
                 }
             }
 
-            // Amount Box - Embossed Card
-            SkeuomorphicCard(
-                modifier = Modifier.fillMaxWidth(),
-                isDark = isDark
+            // ── Amount Entry ──────────────────────────────────
+            val activeTypeColor = typeColors[type] ?: MaterialTheme.colorScheme.primary
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(activeTypeColor.copy(alpha = 0.08f))
+                    .padding(vertical = 24.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "AMOUNTS / BALANCE",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isDark) Color(0xFF90A49E) else Color(0xFF3B524B)
+                        text = "Amount",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = activeTypeColor.copy(alpha = 0.7f),
+                        letterSpacing = 1.sp
                     )
-
+                    Spacer(modifier = Modifier.height(6.dp))
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center
                     ) {
                         Text(
                             text = globalCurrency,
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Black,
-                            color = if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309),
+                            fontSize = 26.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = activeTypeColor,
                             modifier = Modifier.padding(end = 6.dp)
                         )
                         BasicTextField(
@@ -2167,10 +2300,10 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
                             textStyle = androidx.compose.ui.text.TextStyle(
                                 fontSize = 36.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isDark) Color(0xFFE4F0EC) else Color(0xFF0E1915),
+                                color = MaterialTheme.colorScheme.onSurface,
                                 textAlign = TextAlign.Center
                             ),
-                            cursorBrush = SolidColor(if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309))
+                            cursorBrush = SolidColor(activeTypeColor)
                         )
                     }
                 }
