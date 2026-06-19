@@ -6,11 +6,14 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface AccountDao {
-    @Query("SELECT * FROM accounts ORDER BY name ASC")
-    fun getAllAccountsFlow(): Flow<List<AccountEntity>>
+    @Query("SELECT * FROM accounts WHERE isSecondCountry = :isSecondCountry ORDER BY name ASC")
+    fun getAllAccountsFlow(isSecondCountry: Boolean): Flow<List<AccountEntity>>
+
+    @Query("SELECT * FROM accounts WHERE isSecondCountry = :isSecondCountry ORDER BY name ASC")
+    suspend fun getAllAccounts(isSecondCountry: Boolean): List<AccountEntity>
 
     @Query("SELECT * FROM accounts ORDER BY name ASC")
-    suspend fun getAllAccounts(): List<AccountEntity>
+    suspend fun getAllAccountsDirect(): List<AccountEntity>
 
     @Query("SELECT * FROM accounts WHERE id = :id")
     suspend fun getAccountById(id: Int): AccountEntity?
@@ -23,6 +26,9 @@ interface AccountDao {
 
     @Delete
     suspend fun deleteAccount(account: AccountEntity)
+
+    @Query("DELETE FROM accounts")
+    suspend fun clearAccounts()
 }
 
 @Dao
@@ -44,15 +50,21 @@ interface CategoryDao {
 
     @Delete
     suspend fun deleteCategory(category: CategoryEntity)
+
+    @Query("DELETE FROM categories")
+    suspend fun clearCategories()
 }
 
 @Dao
 interface TransactionDao {
-    @Query("SELECT * FROM transactions ORDER BY date DESC")
-    fun getAllTransactionsFlow(): Flow<List<TransactionEntity>>
+    @Query("SELECT * FROM transactions WHERE isSecondCountry = :isSecondCountry ORDER BY date DESC")
+    fun getAllTransactionsFlow(isSecondCountry: Boolean): Flow<List<TransactionEntity>>
+
+    @Query("SELECT * FROM transactions WHERE isSecondCountry = :isSecondCountry ORDER BY date DESC")
+    suspend fun getAllTransactions(isSecondCountry: Boolean): List<TransactionEntity>
 
     @Query("SELECT * FROM transactions ORDER BY date DESC")
-    suspend fun getAllTransactions(): List<TransactionEntity>
+    suspend fun getAllTransactionsDirect(): List<TransactionEntity>
 
     @Query("SELECT * FROM transactions WHERE id = :id")
     suspend fun getTransactionById(id: Int): TransactionEntity?
@@ -66,17 +78,23 @@ interface TransactionDao {
     @Delete
     suspend fun deleteTransaction(transaction: TransactionEntity)
 
-    @Query("SELECT * FROM transactions WHERE date >= :start AND date <= :end ORDER BY date DESC")
-    fun getTransactionsInRangeFlow(start: Long, end: Long): Flow<List<TransactionEntity>>
+    @Query("SELECT * FROM transactions WHERE date >= :start AND date <= :end AND isSecondCountry = :isSecondCountry ORDER BY date DESC")
+    fun getTransactionsInRangeFlow(start: Long, end: Long, isSecondCountry: Boolean): Flow<List<TransactionEntity>>
+
+    @Query("DELETE FROM transactions")
+    suspend fun clearTransactions()
 }
 
 @Dao
 interface BudgetDao {
-    @Query("SELECT * FROM budgets WHERE month = :month")
-    fun getBudgetsForMonthFlow(month: String): Flow<List<BudgetEntity>>
+    @Query("SELECT * FROM budgets WHERE month = :month AND isSecondCountry = :isSecondCountry")
+    fun getBudgetsForMonthFlow(month: String, isSecondCountry: Boolean): Flow<List<BudgetEntity>>
 
-    @Query("SELECT * FROM budgets WHERE month = :month")
-    suspend fun getBudgetsForMonth(month: String): List<BudgetEntity>
+    @Query("SELECT * FROM budgets WHERE month = :month AND isSecondCountry = :isSecondCountry")
+    suspend fun getBudgetsForMonth(month: String, isSecondCountry: Boolean): List<BudgetEntity>
+
+    @Query("SELECT * FROM budgets ORDER BY month DESC")
+    suspend fun getAllBudgetsDirect(): List<BudgetEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBudget(budget: BudgetEntity): Long
@@ -86,15 +104,21 @@ interface BudgetDao {
 
     @Delete
     suspend fun deleteBudget(budget: BudgetEntity)
+
+    @Query("DELETE FROM budgets")
+    suspend fun clearBudgets()
 }
 
 @Dao
 interface EMIDao {
-    @Query("SELECT * FROM emis ORDER BY id DESC")
-    fun getAllEMIsFlow(): Flow<List<EMIEntity>>
+    @Query("SELECT * FROM emis WHERE isSecondCountry = :isSecondCountry ORDER BY id DESC")
+    fun getAllEMIsFlow(isSecondCountry: Boolean): Flow<List<EMIEntity>>
+
+    @Query("SELECT * FROM emis WHERE isSecondCountry = :isSecondCountry ORDER BY id DESC")
+    suspend fun getAllEMIs(isSecondCountry: Boolean): List<EMIEntity>
 
     @Query("SELECT * FROM emis ORDER BY id DESC")
-    suspend fun getAllEMIs(): List<EMIEntity>
+    suspend fun getAllEMIsDirect(): List<EMIEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertEMI(emi: EMIEntity): Long
@@ -104,4 +128,7 @@ interface EMIDao {
 
     @Delete
     suspend fun deleteEMI(emi: EMIEntity)
+
+    @Query("DELETE FROM emis")
+    suspend fun clearEMIs()
 }

@@ -14,8 +14,8 @@ class WealthRepositoryImpl(private val db: AppDatabase) : WealthRepository {
     private val emiDao = db.emiDao()
 
     // Accounts
-    override fun getAllAccountsFlow(): Flow<List<AccountEntity>> = accountDao.getAllAccountsFlow()
-    override suspend fun getAllAccounts(): List<AccountEntity> = accountDao.getAllAccounts()
+    override fun getAllAccountsFlow(isSecondCountry: Boolean): Flow<List<AccountEntity>> = accountDao.getAllAccountsFlow(isSecondCountry)
+    override suspend fun getAllAccounts(isSecondCountry: Boolean): List<AccountEntity> = accountDao.getAllAccounts(isSecondCountry)
     override suspend fun getAccountById(id: Int): AccountEntity? = accountDao.getAccountById(id)
     override suspend fun insertAccount(account: AccountEntity): Long = accountDao.insertAccount(account)
     override suspend fun updateAccount(account: AccountEntity) = accountDao.updateAccount(account)
@@ -51,8 +51,8 @@ class WealthRepositoryImpl(private val db: AppDatabase) : WealthRepository {
     }
 
     // Transactions
-    override fun getAllTransactionsFlow(): Flow<List<TransactionEntity>> = transactionDao.getAllTransactionsFlow()
-    override suspend fun getAllTransactions(): List<TransactionEntity> = transactionDao.getAllTransactions()
+    override fun getAllTransactionsFlow(isSecondCountry: Boolean): Flow<List<TransactionEntity>> = transactionDao.getAllTransactionsFlow(isSecondCountry)
+    override suspend fun getAllTransactions(isSecondCountry: Boolean): List<TransactionEntity> = transactionDao.getAllTransactions(isSecondCountry)
     override suspend fun getTransactionById(id: Int): TransactionEntity? = transactionDao.getTransactionById(id)
 
     override suspend fun insertTransaction(transaction: TransactionEntity): Long {
@@ -78,8 +78,8 @@ class WealthRepositoryImpl(private val db: AppDatabase) : WealthRepository {
         transactionDao.updateTransaction(transaction)
     }
 
-    override fun getTransactionsInRangeFlow(start: Long, end: Long): Flow<List<TransactionEntity>> {
-        return transactionDao.getTransactionsInRangeFlow(start, end)
+    override fun getTransactionsInRangeFlow(start: Long, end: Long, isSecondCountry: Boolean): Flow<List<TransactionEntity>> {
+        return transactionDao.getTransactionsInRangeFlow(start, end, isSecondCountry)
     }
 
     private suspend fun updateAccountBalancesForNewTransaction(tx: TransactionEntity) {
@@ -123,15 +123,29 @@ class WealthRepositoryImpl(private val db: AppDatabase) : WealthRepository {
     }
 
     // Budgets
-    override fun getBudgetsForMonthFlow(month: String): Flow<List<BudgetEntity>> = budgetDao.getBudgetsForMonthFlow(month)
-    override suspend fun getBudgetsForMonth(month: String): List<BudgetEntity> = budgetDao.getBudgetsForMonth(month)
+    override fun getBudgetsForMonthFlow(month: String, isSecondCountry: Boolean): Flow<List<BudgetEntity>> = budgetDao.getBudgetsForMonthFlow(month, isSecondCountry)
+    override suspend fun getBudgetsForMonth(month: String, isSecondCountry: Boolean): List<BudgetEntity> = budgetDao.getBudgetsForMonth(month, isSecondCountry)
     override suspend fun insertBudget(budget: BudgetEntity): Long = budgetDao.insertBudget(budget)
     override suspend fun updateBudget(budget: BudgetEntity) = budgetDao.updateBudget(budget)
     override suspend fun deleteBudget(budget: BudgetEntity) = budgetDao.deleteBudget(budget)
 
     // EMIs
-    override fun getAllEMIsFlow(): Flow<List<EMIEntity>> = emiDao.getAllEMIsFlow()
+    override fun getAllEMIsFlow(isSecondCountry: Boolean): Flow<List<EMIEntity>> = emiDao.getAllEMIsFlow(isSecondCountry)
     override suspend fun insertEMI(emi: EMIEntity): Long = emiDao.insertEMI(emi)
     override suspend fun updateEMI(emi: EMIEntity) = emiDao.updateEMI(emi)
     override suspend fun deleteEMI(emi: EMIEntity) = emiDao.deleteEMI(emi)
+
+    // Backup & Restore Implementation
+    override suspend fun getAllAccountsDirect(): List<AccountEntity> = accountDao.getAllAccountsDirect()
+    override suspend fun getAllTransactionsDirect(): List<TransactionEntity> = transactionDao.getAllTransactionsDirect()
+    override suspend fun getAllBudgetsDirect(): List<BudgetEntity> = budgetDao.getAllBudgetsDirect()
+    override suspend fun getAllEMIsDirect(): List<EMIEntity> = emiDao.getAllEMIsDirect()
+
+    override suspend fun clearAllData() {
+        transactionDao.clearTransactions()
+        budgetDao.clearBudgets()
+        emiDao.clearEMIs()
+        accountDao.clearAccounts()
+        categoryDao.clearCategories()
+    }
 }

@@ -8,7 +8,8 @@ data class AccountEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val name: String,
     val type: String, // "Cash", "Bank", "Credit Card", "Digital Wallet"
-    val balance: Double
+    val balance: Double,
+    val isSecondCountry: Boolean = false
 )
 
 @Entity(tableName = "categories")
@@ -30,7 +31,8 @@ data class TransactionEntity(
     val transferToAccountId: Int? = null, // Destination account if Transfer
     val date: Long, // Timestamp (epoch millis)
     val note: String,
-    val imagePath: String? = null
+    val imagePath: String? = null,
+    val isSecondCountry: Boolean = false
 )
 
 @Entity(tableName = "budgets")
@@ -38,7 +40,8 @@ data class BudgetEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val categoryId: Int, // category associated, or -1 for overall limit
     val limitAmount: Double,
-    val month: String // YYYY-MM formatted
+    val month: String, // YYYY-MM formatted
+    val isSecondCountry: Boolean = false
 )
 
 @Entity(tableName = "emis")
@@ -52,5 +55,6 @@ data class EMIEntity(
     val isDebt: Boolean = false,
     val debtType: String = "Borrowed", // "Borrowed", "Lent"
     val personName: String = "",
-    val tenureMonths: Int = 12
+    val tenureMonths: Int = 12,
+    val isSecondCountry: Boolean = false
 )

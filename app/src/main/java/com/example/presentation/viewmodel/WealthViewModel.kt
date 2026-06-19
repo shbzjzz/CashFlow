@@ -10,10 +10,6 @@ import com.example.data.database.AppDatabase
 import com.example.data.model.*
 import com.example.data.repository.WealthRepositoryImpl
 import com.example.domain.repository.WealthRepository
-import com.google.firebase.FirebaseApp
-import com.google.firebase.FirebaseOptions
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.io.BufferedReader
@@ -27,7 +23,28 @@ class WealthViewModel(application: Application) : AndroidViewModel(application) 
     private val prefs = application.getSharedPreferences("wealthflow_prefs", Context.MODE_PRIVATE)
 
     private val _currency = MutableStateFlow(prefs.getString("currency", "AED") ?: "AED")
-    val currency: StateFlow<String> = _currency.asStateFlow()
+    private val _secondCountryCurrency = MutableStateFlow(prefs.getString("second_country_currency", "USD") ?: "USD")
+    val secondCountryCurrency: StateFlow<String> = _secondCountryCurrency.asStateFlow()
+
+    private val _isSecondCountryActive = MutableStateFlow(prefs.getBoolean("is_second_country_active", false))
+    val isSecondCountryActive: StateFlow<Boolean> = _isSecondCountryActive.asStateFlow()
+
+    val currency: StateFlow<String> = combine(
+        _currency,
+        _isSecondCountryActive,
+        _secondCountryCurrency
+    ) { cur, isSec, secCur ->
+        if (isSec) secCur else cur
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, prefs.getString("currency", "AED") ?: "AED")
+
+    private val _homeCountryName = MutableStateFlow(prefs.getString("home_country_name", "United Arab Emirates") ?: "United Arab Emirates")
+    val homeCountryName: StateFlow<String> = _homeCountryName.asStateFlow()
+
+    private val _hasSecondCountry = MutableStateFlow(prefs.getBoolean("has_second_country", false))
+    val hasSecondCountry: StateFlow<Boolean> = _hasSecondCountry.asStateFlow()
+
+    private val _secondCountryName = MutableStateFlow(prefs.getString("second_country_name", "") ?: "")
+    val secondCountryName: StateFlow<String> = _secondCountryName.asStateFlow()
 
     private val _isDarkMode = MutableStateFlow(prefs.getBoolean("is_dark_mode", false))
     val isDarkMode: StateFlow<Boolean> = _isDarkMode.asStateFlow()
@@ -38,15 +55,12 @@ class WealthViewModel(application: Application) : AndroidViewModel(application) 
     private val _isAppLocked = MutableStateFlow(prefs.getString("saved_pin", null) != null)
     val isAppLocked: StateFlow<Boolean> = _isAppLocked.asStateFlow()
 
-    // Google Auth States
-    private val _isGoogleLoggedIn = MutableStateFlow(prefs.getBoolean("is_google_logged_in", false))
-    val isGoogleLoggedIn: StateFlow<Boolean> = _isGoogleLoggedIn.asStateFlow()
+    // Local Registration States
+    private val _isLoggedIn = MutableStateFlow(prefs.getBoolean("is_logged_in", false))
+    val isLoggedIn: StateFlow<Boolean> = _isLoggedIn.asStateFlow()
 
-    private val _googleUserName = MutableStateFlow(prefs.getString("google_user_name", "Guest User") ?: "Guest User")
-    val googleUserName: StateFlow<String> = _googleUserName.asStateFlow()
-
-    private val _googleUserEmail = MutableStateFlow(prefs.getString("google_user_email", null))
-    val googleUserEmail: StateFlow<String?> = _googleUserEmail.asStateFlow()
+    private val _username = MutableStateFlow(prefs.getString("user_name", "Guest") ?: "Guest")
+    val username: StateFlow<String> = _username.asStateFlow()
 
     // Dynamic Saved Accounts for the custom Sign-in selector (eliminating hardcoded lists)
     private val _savedAccounts = MutableStateFlow<List<Pair<String, String>>>(emptyList())
@@ -55,60 +69,8 @@ class WealthViewModel(application: Application) : AndroidViewModel(application) 
     private val repository: WealthRepository
 
     init {
-        // Initialize Firebase safely using dynamic BuildConfig coordinates with offline mock fallbacks
-        try {
-            if (FirebaseApp.getApps(application).isEmpty()) {
-                val apiKey = try {
-                    com.example.BuildConfig.FIREBASE_API_KEY.takeIf { it.isNotBlank() && !it.startsWith("PLACEHOLDER") }
-                } catch (e: Throwable) { null } ?: "AIzaSyA_mockKey1234567890ForCashFlowAuth"
-
-                val appId = try {
-                    com.example.BuildConfig.FIREBASE_APPLICATION_ID.takeIf { it.isNotBlank() && !it.startsWith("PLACEHOLDER") }
-                } catch (e: Throwable) { null } ?: "1:5551212:android:999bc8cf"
-
-                val projectId = try {
-                    com.example.BuildConfig.FIREBASE_PROJECT_ID.takeIf { it.isNotBlank() && !it.startsWith("PLACEHOLDER") }
-                } catch (e: Throwable) { null } ?: "cashflow-applet"
-
-                val options = FirebaseOptions.Builder()
-                    .setApiKey(apiKey)
-                    .setApplicationId(appId)
-                    .setProjectId(projectId)
-                    .build()
-                FirebaseApp.initializeApp(application, options)
-                Log.d("Auth", "Firebase initialized dynamically. Using live sync config: ${apiKey != "AIzaSyA_mockKey1234567890ForCashFlowAuth"}")
-            }
-        } catch (e: Exception) {
-            Log.e("Auth", "Firebase setup dynamic initialization failed: ${e.message}")
-        }
-
         val database = AppDatabase.getDatabase(application)
         repository = WealthRepositoryImpl(database)
-
-        // Load saved Google accounts dynamically
-        try {
-            loadSavedAccounts()
-        } catch (e: Exception) {
-            Log.e("Auth", "Dynamic account loading failed: ${e.message}")
-        }
-
-        // Restore user session dynamically from FirebaseAuth if it's active!
-        try {
-            val auth = FirebaseAuth.getInstance()
-            val user = auth.currentUser
-            if (user != null) {
-                _googleUserName.value = user.displayName ?: user.email?.substringBefore("@") ?: "Verified User"
-                _googleUserEmail.value = user.email
-                _isGoogleLoggedIn.value = true
-                prefs.edit()
-                    .putString("google_user_name", _googleUserName.value)
-                    .putString("google_user_email", _googleUserEmail.value)
-                    .putBoolean("is_google_logged_in", true)
-                    .apply()
-            }
-        } catch (e: Exception) {
-            Log.e("Auth", "Firebase startup session restore bypass: ${e.message}")
-        }
 
         // Populate database with default categories and sample data on initial startup run
         viewModelScope.launch {
@@ -119,16 +81,22 @@ class WealthViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     // Live Flows
-    val accounts: StateFlow<List<AccountEntity>> = repository.getAllAccountsFlow()
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val accounts: StateFlow<List<AccountEntity>> = _isSecondCountryActive
+        .flatMapLatest { repository.getAllAccountsFlow(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val transactions: StateFlow<List<TransactionEntity>> = repository.getAllTransactionsFlow()
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val transactions: StateFlow<List<TransactionEntity>> = _isSecondCountryActive
+        .flatMapLatest { repository.getAllTransactionsFlow(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val categories: StateFlow<List<CategoryEntity>> = repository.getAllCategoriesFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val emis: StateFlow<List<EMIEntity>> = repository.getAllEMIsFlow()
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val emis: StateFlow<List<EMIEntity>> = _isSecondCountryActive
+        .flatMapLatest { repository.getAllEMIsFlow(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // Interactive Filters
@@ -144,14 +112,18 @@ class WealthViewModel(application: Application) : AndroidViewModel(application) 
     private val _selectedAccountIdFilter = MutableStateFlow<Int?>(null)
     val selectedAccountIdFilter: StateFlow<Int?> = _selectedAccountIdFilter.asStateFlow()
 
+    private val _reportsFilter = MutableStateFlow("Monthly")
+    val reportsFilter: StateFlow<String> = _reportsFilter.asStateFlow()
+
     // Dynamic budgets flow combined with category transaction aggregation
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val budgetsWithDetails: StateFlow<List<BudgetWithDetails>> = combine(
         selectedMonth,
-        repository.getBudgetsForMonthFlow(getCurrentMonthString()), // simple fetch or dynamic month budget query
+        _isSecondCountryActive.flatMapLatest { repository.getBudgetsForMonthFlow(getCurrentMonthString(), it) },
         transactions,
         categories
     ) { month, budgetList, txList, catList ->
-        val monthBudgets = repository.getBudgetsForMonth(month) // suspend, fetch directly to verify
+        val monthBudgets = repository.getBudgetsForMonth(month, _isSecondCountryActive.value)
         
         // Sum expenses by category for selected month
         val startOfM = getStartOfMonthTimestamp(month)
@@ -189,6 +161,26 @@ class WealthViewModel(application: Application) : AndroidViewModel(application) 
         prefs.edit().putString("currency", symbol).apply()
     }
 
+    fun setupSecondCountry(name: String, currency: String) {
+        _hasSecondCountry.value = true
+        _secondCountryName.value = name
+        _secondCountryCurrency.value = currency
+        prefs.edit()
+            .putBoolean("has_second_country", true)
+            .putString("second_country_name", name)
+            .putString("second_country_currency", currency)
+            .apply()
+    }
+
+    fun toggleCountry(isSecond: Boolean) {
+        _isSecondCountryActive.value = isSecond
+        prefs.edit().putBoolean("is_second_country_active", isSecond).apply()
+    }
+
+    fun getCurrentCurrency(): String {
+        return if (_isSecondCountryActive.value) _secondCountryCurrency.value else _currency.value
+    }
+
     fun toggleDarkMode() {
         _isDarkMode.value = !_isDarkMode.value
         prefs.edit().putBoolean("is_dark_mode", _isDarkMode.value).apply()
@@ -214,134 +206,69 @@ class WealthViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun loadSavedAccounts() {
-        val set = prefs.getStringSet("saved_accounts_set", emptySet()) ?: emptySet()
-        _savedAccounts.value = set.map {
-            val parts = it.split("|", limit = 2)
-            val name = parts.getOrNull(0) ?: "User"
-            val email = parts.getOrNull(1) ?: it
-            Pair(name, email)
-        }.sortedBy { it.second }
-    }
+    fun registerUser(name: String, homeCountry: String, homeCurrency: String, secCountry: String?, secCurrency: String?) {
+        _username.value = name
+        _homeCountryName.value = homeCountry
+        _currency.value = homeCurrency
+        
+        val editor = prefs.edit()
+            .putString("user_name", name)
+            .putString("home_country_name", homeCountry)
+            .putString("currency", homeCurrency)
+            .putBoolean("is_logged_in", true)
 
-    fun saveAccount(name: String, email: String) {
-        val set = prefs.getStringSet("saved_accounts_set", emptySet()) ?: emptySet()
-        val newSet = set.toMutableSet()
-        newSet.add("$name|$email")
-        prefs.edit().putStringSet("saved_accounts_set", newSet).apply()
-        loadSavedAccounts()
-    }
-
-    fun removeAccount(email: String) {
-        val set = prefs.getStringSet("saved_accounts_set", emptySet()) ?: emptySet()
-        val newSet = set.filter { !it.endsWith("|$email") && it != email }.toSet()
-        prefs.edit().putStringSet("saved_accounts_set", newSet).apply()
-        loadSavedAccounts()
-    }
-
-    fun loginWithGoogle(name: String, email: String, idToken: String? = null) {
-        _googleUserName.value = name
-        _googleUserEmail.value = email
-        _isGoogleLoggedIn.value = true
-        prefs.edit()
-            .putString("google_user_name", name)
-            .putString("google_user_email", email)
-            .putBoolean("is_google_logged_in", true)
-            .apply()
-
-        // Persist newly added account dynamically in preferences
-        try {
-            saveAccount(name, email)
-        } catch (e: Exception) {
-            Log.e("Auth", "Failed to save dynamic account to preferences: ${e.message}")
+        if (secCountry != null && secCurrency != null) {
+            _hasSecondCountry.value = true
+            _secondCountryName.value = secCountry
+            _secondCountryCurrency.value = secCurrency
+            editor.putBoolean("has_second_country", true)
+                .putString("second_country_name", secCountry)
+                .putString("second_country_currency", secCurrency)
+        } else {
+            _hasSecondCountry.value = false
+            editor.putBoolean("has_second_country", false)
         }
-
-        // Sync with Firebase Authentication as backend
-        try {
-            val auth = FirebaseAuth.getInstance()
-            if (idToken != null) {
-                // Real Google Auth credential in Firebase backend
-                val credential = GoogleAuthProvider.getCredential(idToken, null)
-                auth.signInWithCredential(credential)
-                    .addOnCompleteListener { task ->
-                        if (task.isSuccessful) {
-                            val user = task.result?.user
-                            Log.d("Auth", "Firebase Custom Google Token Login Successful: ${user?.email}")
-                            user?.let {
-                                val firebaseName = it.displayName ?: name
-                                val firebaseEmail = it.email ?: email
-                                _googleUserName.value = firebaseName
-                                _googleUserEmail.value = firebaseEmail
-                                prefs.edit()
-                                    .putString("google_user_name", firebaseName)
-                                    .putString("google_user_email", firebaseEmail)
-                                    .apply()
-                            }
-                        } else {
-                            Log.e("Auth", "Firebase Auth with identity token failed: ${task.exception?.message}")
-                        }
-                    }
-            } else {
-                // Perform dynamic Email/Password session sync with Firebase Auth
-                // Generate secure deterministic password based on the unique email to create/access real email-associated profiles
-                val deterministicPassword = "Pw_" + email.hashCode().toString().replace("-", "x") + "CashFlow"
-                auth.signInWithEmailAndPassword(email, deterministicPassword)
-                    .addOnCompleteListener { signInTask ->
-                        if (signInTask.isSuccessful) {
-                            val user = signInTask.result?.user
-                            Log.d("Auth", "Firebase Email Session Sign-In Successful: ${user?.email}")
-                            user?.let {
-                                val firebaseName = it.displayName ?: name
-                                _googleUserName.value = firebaseName
-                                prefs.edit()
-                                    .putString("google_user_name", firebaseName)
-                                    .apply()
-                            }
-                        } else {
-                            // If sign-in failed, the user probably doesn't exist yet, so we register them dynamically in Firebase!
-                            auth.createUserWithEmailAndPassword(email, deterministicPassword)
-                                .addOnCompleteListener { createParamTask ->
-                                    if (createParamTask.isSuccessful) {
-                                        val user = createParamTask.result?.user
-                                        Log.d("Auth", "Firebase Email Session Registration Successful: ${user?.email}")
-                                        // Update the display name in Firebase so it syncs and persists
-                                        val profileUpdates = com.google.firebase.auth.UserProfileChangeRequest.Builder()
-                                            .setDisplayName(name)
-                                            .build()
-                                        user?.updateProfile(profileUpdates)
-                                    } else {
-                                        Log.e("Auth", "Firebase Email Session custom user creation failed: ${createParamTask.exception?.message}")
-                                    }
-                                }
-                        }
-                    }
-            }
-        } catch (e: Exception) {
-            Log.e("Auth", "Firebase backend session synchronization exception: ${e.message}")
+        
+        editor.apply()
+        _isLoggedIn.value = true
+        viewModelScope.launch {
+            computeSmartInsights()
         }
     }
 
-    fun logoutGoogle() {
-        _googleUserName.value = "Guest User"
-        _googleUserEmail.value = null
-        _isGoogleLoggedIn.value = false
-        prefs.edit()
-            .remove("google_user_name")
-            .remove("google_user_email")
-            .putBoolean("is_google_logged_in", false)
-            .apply()
+    fun logout() {
+        _isLoggedIn.value = false
+        prefs.edit().putBoolean("is_logged_in", false).apply()
+    }
 
-        try {
-            FirebaseAuth.getInstance().signOut()
-            Log.d("Auth", "Firebase session successfully logged out.")
-        } catch (e: Exception) {
-            Log.e("Auth", "Firebase sign out custom exception: ${e.message}")
+    fun updateCountries(homeCountry: String, homeCurrency: String, secCountry: String?, secCurrency: String?) {
+        _homeCountryName.value = homeCountry
+        _currency.value = homeCurrency
+        
+        val editor = prefs.edit()
+            .putString("home_country_name", homeCountry)
+            .putString("currency", homeCurrency)
+
+        if (secCountry != null && secCurrency != null) {
+            _hasSecondCountry.value = true
+            _secondCountryName.value = secCountry
+            _secondCountryCurrency.value = secCurrency
+            editor.putBoolean("has_second_country", true)
+                .putString("second_country_name", secCountry)
+                .putString("second_country_currency", secCurrency)
+        } else {
+            _hasSecondCountry.value = false
+            editor.putBoolean("has_second_country", false)
+        }
+        editor.apply()
+        viewModelScope.launch {
+            computeSmartInsights()
         }
     }
 
     fun updateUsername(newName: String) {
-        _googleUserName.value = newName
-        prefs.edit().putString("google_user_name", newName).apply()
+        _username.value = newName
+        prefs.edit().putString("user_name", newName).apply()
     }
 
     fun setSelectedMonth(month: String) {
@@ -363,10 +290,23 @@ class WealthViewModel(application: Application) : AndroidViewModel(application) 
         _selectedAccountIdFilter.value = accountId
     }
 
+    fun updateReportsFilter(filter: String) {
+        _reportsFilter.value = filter
+    }
+
     // Operations
     fun addAccount(name: String, type: String, balance: Double) {
         viewModelScope.launch {
-            repository.insertAccount(AccountEntity(name = name, type = type, balance = balance))
+            repository.insertAccount(AccountEntity(
+                name = name, 
+                type = type, 
+                balance = balance,
+                isSecondCountry = _isSecondCountryActive.value
+            ))
+            addNotification(
+                title = "Vault Created 🏦",
+                description = "New $type vault '$name' set up with standard balance: ${getCurrentCurrency()} ${String.format(Locale.getDefault(), "%,.2f", balance)}"
+            )
             computeSmartInsights()
         }
     }
@@ -374,6 +314,10 @@ class WealthViewModel(application: Application) : AndroidViewModel(application) 
     fun deleteAccount(account: AccountEntity) {
         viewModelScope.launch {
             repository.deleteAccount(account)
+            addNotification(
+                title = "Vault Removed 🗑️",
+                description = "Vault '${account.name}' has been successfully deleted."
+            )
             computeSmartInsights()
         }
     }
@@ -397,9 +341,15 @@ class WealthViewModel(application: Application) : AndroidViewModel(application) 
                 transferToAccountId = transferToAccountId,
                 date = date,
                 note = note,
-                imagePath = imagePath
+                imagePath = imagePath,
+                isSecondCountry = _isSecondCountryActive.value
             )
             repository.insertTransaction(tx)
+            val descSuffix = if (note.isNotBlank()) " ($note)" else ""
+            addNotification(
+                title = if (type == "Transfer") "Transfer Swapped 🔄" else if (type == "Income") "Income Credit 📈" else "Debit Recorded 📉",
+                description = "Recorded $type: ${getCurrentCurrency()} ${String.format(Locale.getDefault(), "%,.2f", amount)}$descSuffix."
+            )
             computeSmartInsights()
         }
     }
@@ -426,7 +376,8 @@ class WealthViewModel(application: Application) : AndroidViewModel(application) 
 
     fun saveBudget(categoryId: Int, limitAmount: Double, month: String) {
         viewModelScope.launch {
-            val existing = repository.getBudgetsForMonth(month)
+            val isSecond = _isSecondCountryActive.value
+            val existing = repository.getBudgetsForMonth(month, isSecond)
             val match = existing.find { it.categoryId == categoryId }
             if (match != null) {
                 if (limitAmount <= 0) {
@@ -435,8 +386,17 @@ class WealthViewModel(application: Application) : AndroidViewModel(application) 
                     repository.updateBudget(match.copy(limitAmount = limitAmount))
                 }
             } else if (limitAmount > 0) {
-                repository.insertBudget(BudgetEntity(categoryId = categoryId, limitAmount = limitAmount, month = month))
+                repository.insertBudget(BudgetEntity(
+                    categoryId = categoryId, 
+                    limitAmount = limitAmount, 
+                    month = month,
+                    isSecondCountry = isSecond
+                ))
             }
+            addNotification(
+                title = "Budget Target Saved 🎯",
+                description = "Configured budget target: ${getCurrentCurrency()} ${String.format(Locale.getDefault(), "%,.2f", limitAmount)} for category matching current month."
+            )
             computeSmartInsights()
         }
     }
@@ -449,7 +409,9 @@ class WealthViewModel(application: Application) : AndroidViewModel(application) 
         isDebt: Boolean = false,
         debtType: String = "Borrowed",
         personName: String = "",
-        tenureMonths: Int = 12
+        tenureMonths: Int = 12,
+        adjustAccountBalance: Boolean = false,
+        accountId: Int? = null
     ) {
         viewModelScope.launch {
             repository.insertEMI(
@@ -461,9 +423,61 @@ class WealthViewModel(application: Application) : AndroidViewModel(application) 
                     isDebt = isDebt,
                     debtType = debtType,
                     personName = personName,
-                    tenureMonths = tenureMonths
+                    tenureMonths = tenureMonths,
+                    isSecondCountry = _isSecondCountryActive.value
                 )
             )
+
+            if (adjustAccountBalance && accountId != null) {
+                // If isDebt and Borrowed -> we get cash (Income)
+                // If isDebt and Lent -> we give cash (Expense)
+                // Else (EMI/Installment) -> we represent it as cash going out (Expense)
+                val type = if (isDebt) {
+                    if (debtType == "Borrowed") "Income" else "Expense"
+                } else {
+                    "Expense"
+                }
+
+                val targetCat = repository.getAllCategories().find {
+                    if (type == "Income") it.name.contains("Salary", ignoreCase = true) || it.name.contains("Refund", ignoreCase = true)
+                    else it.name.contains("Bills", ignoreCase = true) || it.name.contains("Debt", ignoreCase = true)
+                }
+
+                addTransaction(
+                    amount = total,
+                    type = type,
+                    categoryId = targetCat?.id,
+                    accountId = accountId,
+                    date = System.currentTimeMillis(),
+                    note = "Loan/EMI Setup: $title"
+                )
+            }
+
+            addNotification(
+                title = if (isDebt) "New Debt Added 📝" else "New Installment Tracked 🏷️",
+                description = "Started tracking '$title' for a total of ${getCurrentCurrency()} ${String.format(Locale.getDefault(), "%,.2f", total)}."
+            )
+
+            // Register system alarm/notification on selected due date if it is an installment
+            try {
+                if (!isDebt && dueDate != "N/A") {
+                    val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+                    val parsedDate = sdf.parse(dueDate)
+                    if (parsedDate != null) {
+                        val monthlyAmt = total / tenureMonths
+                        val cur = getCurrentCurrency()
+                        com.example.receiver.EmiAlarmScheduler.scheduleEmiAlertAtDate(
+                            context = getApplication<android.app.Application>().applicationContext,
+                            emiTitle = title,
+                            dueDateMillis = parsedDate.time,
+                            amount = monthlyAmt,
+                            currency = cur
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
@@ -488,151 +502,162 @@ class WealthViewModel(application: Application) : AndroidViewModel(application) 
                 date = System.currentTimeMillis(),
                 note = "EMI Payment: ${emi.title}"
             )
+            addNotification(
+                title = "Repayment Tracked 💵",
+                description = "Paid installment of ${getCurrentCurrency()} ${String.format(Locale.getDefault(), "%,.2f", amount)} towards '${emi.title}'."
+            )
         }
     }
 
     fun deleteEMI(emi: EMIEntity) {
         viewModelScope.launch {
             repository.deleteEMI(emi)
+            addNotification(
+                title = if (emi.isDebt) "Debt Cleared 📝" else "Installment Omitted 🏷️",
+                description = "'${emi.title}' removed from tracker."
+            )
         }
     }
 
     // Prepopulate system with rich default sample data on first launch
     private suspend fun prepopulateSampleDataOnFirstRun() {
-        val existingAccounts = repository.getAllAccounts()
+        val existingAccounts = repository.getAllAccounts(false)
         if (existingAccounts.isEmpty()) {
-            val mainBankId = repository.insertAccount(AccountEntity(name = "Main Bank", type = "Bank", balance = 8200.0)).toInt()
-            val walletId = repository.insertAccount(AccountEntity(name = "Digital Wallet", type = "Digital Wallet", balance = 1500.0)).toInt()
-            val cashId = repository.insertAccount(AccountEntity(name = "Cash", type = "Cash", balance = 450.0)).toInt()
-            val ccId = repository.insertAccount(AccountEntity(name = "Credit Card", type = "Credit Card", balance = -1200.0)).toInt()
-
-            val cats = repository.getAllCategories()
-            val foodCat = cats.find { it.name == "Food & Dining" }
-            val salaryCat = cats.find { it.name == "Salary" }
-            val rentCat = cats.find { it.name == "Rent & Housing" }
-            val gymCat = cats.find { it.name == "Gym & Fitness" }
-            val billsCat = cats.find { it.name == "Bills & Utilities" }
-
-            val now = System.currentTimeMillis()
-            val dayMillis = 24 * 60 * 60 * 1000L
-
-            // Sample Transactions
-            // Transaction 1: -45.00 Grocery Today
-            repository.insertTransaction(TransactionEntity(
-                amount = 45.0,
-                type = "Expense",
-                categoryId = foodCat?.id,
-                accountId = mainBankId,
-                date = now - (1000 * 60 * 5), // 5 mins ago
-                note = "Grocery"
-            ))
-
-            // Transaction 2: +2500.00 Salary Yesterday
-            repository.insertTransaction(TransactionEntity(
-                amount = 2500.0,
-                type = "Income",
-                categoryId = salaryCat?.id,
-                accountId = mainBankId,
-                date = now - dayMillis,
-                note = "Salary"
-            ))
-
-            // Transaction 3: -1200.00 Rent Oct 1/Recently
-            repository.insertTransaction(TransactionEntity(
-                amount = 1200.0,
-                type = "Expense",
-                categoryId = rentCat?.id,
-                accountId = mainBankId,
-                date = now - (dayMillis * 3),
-                note = "Rent"
-            ))
-
-            // Transaction 4: -50.00 Gym Oct 1/Recently
-            repository.insertTransaction(TransactionEntity(
-                amount = 50.0,
-                type = "Expense",
-                categoryId = gymCat?.id,
-                accountId = mainBankId,
-                date = now - (dayMillis * 4),
-                note = "Gym"
-            ))
-
-            // Sample Budget
-            foodCat?.let {
-                repository.insertBudget(BudgetEntity(categoryId = it.id, limitAmount = 1500.0, month = getCurrentMonthString()))
-            }
-            cats.find { it.name == "Shopping" }?.let {
-                repository.insertBudget(BudgetEntity(categoryId = it.id, limitAmount = 1000.0, month = getCurrentMonthString()))
-            }
-
-            // Sample EMI
-            repository.insertEMI(EMIEntity(title = "Tabby Payment", totalAmount = 3000.0, paidAmount = 1500.0, dueDate = "10th"))
-            repository.insertEMI(EMIEntity(title = "Car Payment", totalAmount = 5000.0, paidAmount = 2500.0, dueDate = "25th"))
+            // Emptied as requested
         }
     }
 
-    // Generate Smart Insights and Pattern Detections
+    // Improved AI Insights logic
     private fun computeSmartInsights() {
-        val txs = transactions.value
-        val cats = categories.value
-        if (txs.isEmpty()) {
-            _smartInsights.value = listOf(
-                SmartInsight("Budget Tip", "Add some transactions above to get started with automated analytics!", "lightbulb", "#2b6954")
-            )
-            return
-        }
+        viewModelScope.launch {
+            val txs = transactions.value
+            val isSec = _isSecondCountryActive.value
+            val curr = if (isSec) _secondCountryCurrency.value else _currency.value
+            
+            val totalInc = txs.filter { it.type == "Income" }.sumOf { it.amount }
+            val totalExp = txs.filter { it.type == "Expense" }.sumOf { it.amount }
+            val netFlow = totalInc - totalExp
 
-        val insightsList = mutableListOf<SmartInsight>()
+            val topCategory = txs.filter { it.type == "Expense" }
+                .groupBy { it.categoryId }
+                .mapValues { it.value.sumOf { t -> t.amount } }
+                .maxByOrNull { it.value }
 
-        // Insight 1: Coffee/Food Spending Warning (if exists)
-        val foodCat = cats.find { it.name.contains("Food", ignoreCase = true) }
-        if (foodCat != null) {
-            val totalSpentOnFood = txs.filter { it.categoryId == foodCat.id && it.type == "Expense" }.sumOf { it.amount }
-            val totalExpense = txs.filter { it.type == "Expense" }.sumOf { it.amount }
-            if (totalExpense > 0 && (totalSpentOnFood / totalExpense) > 0.25) {
-                insightsList.add(
-                    SmartInsight(
-                        title = "Spending Alert",
-                        description = "You spent ${(totalSpentOnFood / totalExpense * 100).toInt()}% of your budget on Food & Dining. Consider minimizing dining out.",
-                        iconType = "warning",
-                        color = "#ba1a1a"
-                    )
-                )
+            val cats = categories.value
+            val catName = cats.find { it.id == topCategory?.key }?.name ?: "General"
+
+            val insightsList = mutableListOf<SmartInsight>()
+            
+            if (netFlow < 0) {
+                insightsList.add(SmartInsight(
+                    "Budget Deficit",
+                    "You've spent ${curr} ${String.format("%.2f", -netFlow)} more than earned. Review top categories to cut back.",
+                    "warning",
+                    "#BA1A1A"
+                ))
+            } else if (totalInc > 0 && totalExp > (totalInc * 0.7)) {
+                insightsList.add(SmartInsight(
+                    "High Burn Rate",
+                    "Expenses are over 70% of income. Strategy: Focus on building a 3-month emergency fund.",
+                    "trending_up",
+                    "#E66B12"
+                ))
+            } else if (netFlow > 0) {
+                insightsList.add(SmartInsight(
+                    "Wealth Building",
+                    "Surplus of ${curr} ${String.format("%.2f", netFlow)}! Consider moving a portion into long-term growth assets.",
+                    "savings",
+                    "#2B6954"
+                ))
             }
+
+            if (topCategory != null) {
+                insightsList.add(SmartInsight(
+                    "Category Focus",
+                    "Heaviest spending in **$catName** (${curr} ${String.format("%.2f", topCategory.value)}). Look for optimization opportunities.",
+                    "shopping_bag",
+                    "#6750A4"
+                ))
+            }
+            
+            if (insightsList.isEmpty()) {
+                insightsList.add(SmartInsight(
+                    "Welcome",
+                    "Start tracking your daily transactions to unlock personalized financial health deep-dives.",
+                    "lightbulb",
+                    "#2B6954"
+                ))
+            }
+
+            _smartInsights.value = insightsList
         }
-
-        // Regular Insight 2: Generic helpful dynamic tip
-        insightsList.add(
-            SmartInsight(
-                title = "Budget Tip",
-                description = "Move 200 AED to Savings right now to reach your investment goals early.",
-                iconType = "lightbulb",
-                color = "#2b6954"
-            )
-        )
-
-        _smartInsights.value = insightsList
     }
 
     // CSV Import / Export Utilities
     fun exportToCSV(context: Context): Uri? {
-        val txList = transactions.value
-        val catList = categories.value
-        val accList = accounts.value
-
-        val csvHeader = "ID,Type,Amount,Date,Category,Account,Note\n"
-        val csvBody = txList.joinToString("\n") { tx ->
-            val catName = catList.find { it.id == tx.categoryId }?.name ?: "None"
-            val accName = accList.find { it.id == tx.accountId }?.name ?: "Unknown"
-            val formattedDate = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(tx.date))
-            "${tx.id},${tx.type},${tx.amount},\"$formattedDate\",\"$catName\",\"$accName\",\"${tx.note.replace("\"", "\"\"")}\""
-        }
-
-        val csvString = csvHeader + csvBody
         return try {
-            val file = File(context.cacheDir, "WealthFlow_Transactions.csv")
-            file.writeText(csvString)
-            Uri.fromFile(file)
+            val sb = java.lang.StringBuilder()
+
+            // 1. ACCOUNTS
+            sb.append("# SECTION: ACCOUNTS\n")
+            sb.append("ID,Name,Type,Balance,IsSecondCountry\n")
+            val allAccounts = kotlinx.coroutines.runBlocking { repository.getAllAccountsDirect() }
+            allAccounts.forEach { acc ->
+                val nameEsc = acc.name.replace("\"", "\"\"")
+                val typeEsc = acc.type.replace("\"", "\"\"")
+                sb.append("${acc.id},\"$nameEsc\",\"$typeEsc\",${acc.balance},${acc.isSecondCountry}\n")
+            }
+            sb.append("\n")
+
+            // 2. CATEGORIES
+            sb.append("# SECTION: CATEGORIES\n")
+            sb.append("ID,Name,Type,Icon,Color\n")
+            val allCategories = kotlinx.coroutines.runBlocking { repository.getAllCategories() }
+            allCategories.forEach { cat ->
+                val nameEsc = cat.name.replace("\"", "\"\"")
+                val typeEsc = cat.type.replace("\"", "\"\"")
+                sb.append("${cat.id},\"$nameEsc\",\"$typeEsc\",\"${cat.icon}\",\"${cat.color}\"\n")
+            }
+            sb.append("\n")
+
+            // 3. TRANSACTIONS
+            sb.append("# SECTION: TRANSACTIONS\n")
+            sb.append("ID,Amount,Type,CategoryId,AccountId,TransferToAccountId,Date,Note,ImagePath,IsSecondCountry\n")
+            val allTransactions = kotlinx.coroutines.runBlocking { repository.getAllTransactionsDirect() }
+            allTransactions.forEach { tx ->
+                val noteEsc = tx.note.replace("\"", "\"\"")
+                val imgEsc = (tx.imagePath ?: "").replace("\"", "\"\"")
+                sb.append("${tx.id},${tx.amount},\"${tx.type}\",${tx.categoryId ?: ""},${tx.accountId},${tx.transferToAccountId ?: ""},${tx.date},\"$noteEsc\",\"$imgEsc\",${tx.isSecondCountry}\n")
+            }
+            sb.append("\n")
+
+            // 4. BUDGETS
+            sb.append("# SECTION: BUDGETS\n")
+            sb.append("ID,CategoryId,LimitAmount,Month,IsSecondCountry\n")
+            val allBudgets = kotlinx.coroutines.runBlocking { repository.getAllBudgetsDirect() }
+            allBudgets.forEach { b ->
+                sb.append("${b.id},${b.categoryId},${b.limitAmount},\"${b.month}\",${b.isSecondCountry}\n")
+            }
+            sb.append("\n")
+
+            // 5. EMIS
+            sb.append("# SECTION: EMIS\n")
+            sb.append("ID,Title,TotalAmount,PaidAmount,DueDate,CategoryId,IsDebt,DebtType,PersonName,TenureMonths,IsSecondCountry\n")
+            val allEMIs = kotlinx.coroutines.runBlocking { repository.getAllEMIsDirect() }
+            allEMIs.forEach { emi ->
+                val titleEsc = emi.title.replace("\"", "\"\"")
+                val debtTypeEsc = emi.debtType.replace("\"", "\"\"")
+                val pNameEsc = emi.personName.replace("\"", "\"\"")
+                sb.append("${emi.id},\"$titleEsc\",${emi.totalAmount},${emi.paidAmount},\"${emi.dueDate}\",${emi.categoryId ?: ""},${emi.isDebt},\"$debtTypeEsc\",\"$pNameEsc\",${emi.tenureMonths},${emi.isSecondCountry}\n")
+            }
+
+            val file = File(context.cacheDir, "WealthFlow_FullBackup.csv")
+            file.writeText(sb.toString())
+            androidx.core.content.FileProvider.getUriForFile(
+                context,
+                "com.example.fileprovider",
+                file
+            )
         } catch (e: Exception) {
             Log.e("WealthViewModel", "CSV Export error: ", e)
             null
@@ -645,58 +670,223 @@ class WealthViewModel(application: Application) : AndroidViewModel(application) 
                 val inputStream = context.contentResolver.openInputStream(uri)
                     ?: throw Exception("Could not open file input stream")
                 val reader = BufferedReader(InputStreamReader(inputStream))
-                var line = reader.readLine() // Header
-
-                val cats = repository.getAllCategories()
-                val accs = repository.getAllAccounts()
-
-                val defaultAccount = accs.firstOrNull() ?: AccountEntity(name = "Imported Acc", type = "Bank", balance = 0.0)
-                var defaultAccountId = defaultAccount.id
-                if (defaultAccountId == 0) {
-                    defaultAccountId = repository.insertAccount(defaultAccount).toInt()
+                
+                val lines = mutableListOf<String>()
+                var currentLine: String?
+                while (reader.readLine().also { currentLine = it } != null) {
+                    lines.add(currentLine!!)
                 }
+                reader.close()
 
-                while (reader.readLine().also { line = it } != null) {
-                    val tokens = line!!.split(",(?=([^\"]*\"[^\"]*\")*[^\"]*$)".toRegex())
-                    if (tokens.size >= 7) {
-                        val type = tokens[1]
-                        val amount = tokens[2].toDoubleOrNull() ?: 0.0
-                        val dateString = tokens[3].replace("\"", "")
-                        val catName = tokens[4].replace("\"", "")
-                        val accName = tokens[5].replace("\"", "")
-                        val note = tokens[6].replace("\"", "")
+                val isNewStyle = lines.any { it.startsWith("# SECTION:") }
 
-                        val dateLong = try {
-                            SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).parse(dateString)?.time ?: System.currentTimeMillis()
+                if (isNewStyle) {
+                    repository.clearAllData()
+
+                    var activeSection = ""
+                    for (rawLine in lines) {
+                        val line = rawLine.trim()
+                        if (line.isEmpty()) continue
+
+                        if (line.startsWith("# SECTION: ACCOUNTS")) {
+                            activeSection = "ACCOUNTS"
+                            continue
+                        } else if (line.startsWith("# SECTION: CATEGORIES")) {
+                            activeSection = "CATEGORIES"
+                            continue
+                        } else if (line.startsWith("# SECTION: TRANSACTIONS")) {
+                            activeSection = "TRANSACTIONS"
+                            continue
+                        } else if (line.startsWith("# SECTION: BUDGETS")) {
+                            activeSection = "BUDGETS"
+                            continue
+                        } else if (line.startsWith("# SECTION: EMIS")) {
+                            activeSection = "EMIS"
+                            continue
+                        } else if (line.startsWith("#")) {
+                            continue
+                        }
+
+                        if (line.startsWith("ID,Name,Type") || 
+                            line.startsWith("ID,Amount,Type") || 
+                            line.startsWith("ID,CategoryId,LimitAmount") ||
+                            line.startsWith("ID,Title,TotalAmount")) {
+                            continue
+                        }
+
+                        val tokens = line.split(",(?=([^\"]*\"[^\"]*\")*[^\"]*$)".toRegex()).map {
+                            it.trim().removeSurrounding("\"").replace("\"\"", "\"")
+                        }
+
+                        try {
+                            when (activeSection) {
+                                "ACCOUNTS" -> {
+                                    if (tokens.size >= 5) {
+                                        val id = tokens[0].toIntOrNull() ?: 0
+                                        val nameVal = tokens[1]
+                                        val typeVal = tokens[2]
+                                        val balanceVal = tokens[3].toDoubleOrNull() ?: 0.0
+                                        val isSecondVal = tokens[4].toBoolean()
+                                        repository.insertAccount(AccountEntity(
+                                            id = id,
+                                            name = nameVal,
+                                            type = typeVal,
+                                            balance = balanceVal,
+                                            isSecondCountry = isSecondVal
+                                        ))
+                                    }
+                                }
+                                "CATEGORIES" -> {
+                                    if (tokens.size >= 5) {
+                                        val id = tokens[0].toIntOrNull() ?: 0
+                                        val nameVal = tokens[1]
+                                        val typeVal = tokens[2]
+                                        val iconVal = tokens[3]
+                                        val colorVal = tokens[4]
+                                        repository.insertCategory(CategoryEntity(
+                                            id = id,
+                                            name = nameVal,
+                                            type = typeVal,
+                                            icon = iconVal,
+                                            color = colorVal
+                                        ))
+                                    }
+                                }
+                                "TRANSACTIONS" -> {
+                                    if (tokens.size >= 10) {
+                                        val id = tokens[0].toIntOrNull() ?: 0
+                                        val amountVal = tokens[1].toDoubleOrNull() ?: 0.0
+                                        val typeVal = tokens[2]
+                                        val catIdVal = tokens[3].toIntOrNull()
+                                        val accIdVal = tokens[4].toIntOrNull() ?: 1
+                                        val transToIdVal = tokens[5].toIntOrNull()
+                                        val dateVal = tokens[6].toLongOrNull() ?: System.currentTimeMillis()
+                                        val noteVal = tokens[7]
+                                        val imgVal = tokens[8].ifBlank { null }
+                                        val isSecondVal = tokens[9].toBoolean()
+                                        repository.insertTransaction(TransactionEntity(
+                                            id = id,
+                                            amount = amountVal,
+                                            type = typeVal,
+                                            categoryId = catIdVal,
+                                            accountId = accIdVal,
+                                            transferToAccountId = transToIdVal,
+                                            date = dateVal,
+                                            note = noteVal,
+                                            imagePath = imgVal,
+                                            isSecondCountry = isSecondVal
+                                        ))
+                                    }
+                                }
+                                "BUDGETS" -> {
+                                    if (tokens.size >= 5) {
+                                        val id = tokens[0].toIntOrNull() ?: 0
+                                        val catIdVal = tokens[1].toIntOrNull() ?: -1
+                                        val limitVal = tokens[2].toDoubleOrNull() ?: 0.0
+                                        val monthVal = tokens[3]
+                                        val isSecondVal = tokens[4].toBoolean()
+                                        repository.insertBudget(BudgetEntity(
+                                            id = id,
+                                            categoryId = catIdVal,
+                                            limitAmount = limitVal,
+                                            month = monthVal,
+                                            isSecondCountry = isSecondVal
+                                        ))
+                                    }
+                                }
+                                "EMIS" -> {
+                                    if (tokens.size >= 11) {
+                                        val id = tokens[0].toIntOrNull() ?: 0
+                                        val titleVal = tokens[1]
+                                        val totalVal = tokens[2].toDoubleOrNull() ?: 0.0
+                                        val paidVal = tokens[3].toDoubleOrNull() ?: 0.0
+                                        val dueVal = tokens[4]
+                                        val catIdVal = tokens[5].toIntOrNull()
+                                        val isDebtVal = tokens[6].toBoolean()
+                                        val debtTypeVal = tokens[7]
+                                        val personNameVal = tokens[8]
+                                        val tenureVal = tokens[9].toIntOrNull() ?: 12
+                                        val isSecondVal = tokens[10].toBoolean()
+                                        repository.insertEMI(EMIEntity(
+                                            id = id,
+                                            title = titleVal,
+                                            totalAmount = totalVal,
+                                            paidAmount = paidVal,
+                                            dueDate = dueVal,
+                                            categoryId = catIdVal,
+                                            isDebt = isDebtVal,
+                                            debtType = debtTypeVal,
+                                            personName = personNameVal,
+                                            tenureMonths = tenureVal,
+                                            isSecondCountry = isSecondVal
+                                        ))
+                                    }
+                                }
+                            }
                         } catch (e: Exception) {
-                            System.currentTimeMillis()
+                            Log.e("WealthViewModel", "Err parsing row: ", e)
                         }
+                    }
+                } else {
+                    val cats = repository.getAllCategories()
+                    val accs = repository.getAllAccounts(_isSecondCountryActive.value)
+                    val defaultAccount = accs.firstOrNull() ?: AccountEntity(name = "Imported Acc", type = "Bank", balance = 0.0, isSecondCountry = _isSecondCountryActive.value)
+                    var defaultAccountId = defaultAccount.id
+                    if (defaultAccountId == 0) {
+                        defaultAccountId = repository.insertAccount(defaultAccount).toInt()
+                    }
 
-                        var matchCat = cats.find { it.name.trim().lowercase() == catName.trim().lowercase() }
-                        if (matchCat == null && catName.isNotEmpty() && catName != "None") {
-                            val newCatId = repository.insertCategory(CategoryEntity(name = catName, type = type, icon = "restaurant", color = "#7f8c8d")).toInt()
-                            matchCat = CategoryEntity(id = newCatId, name = catName, type = type, icon = "restaurant", color = "#7f8c8d")
+                    val firstLine = lines.firstOrNull() ?: ""
+                    val dataLines = if (firstLine.contains("Type") || firstLine.contains("ID")) lines.drop(1) else lines
+
+                    for (rawLine in dataLines) {
+                        val line = rawLine.trim()
+                        if (line.isEmpty()) continue
+                        val tokens = line.split(",(?=([^\"]*\"[^\"]*\")*[^\"]*$)".toRegex()).map {
+                            it.trim().removeSurrounding("\"").replace("\"\"", "\"")
                         }
+                        if (tokens.size >= 7) {
+                            val type = tokens[1]
+                            val amount = tokens[2].toDoubleOrNull() ?: 0.0
+                            val dateString = tokens[3]
+                            val catName = tokens[4]
+                            val accName = tokens[5]
+                            val note = tokens[6]
 
-                        var matchAcc = accs.find { it.name.trim().lowercase() == accName.trim().lowercase() }
-                        var actId = defaultAccountId
-                        if (matchAcc != null) {
-                            actId = matchAcc.id
-                        } else if (accName.isNotEmpty() && accName != "Unknown") {
-                            actId = repository.insertAccount(AccountEntity(name = accName, type = "Bank", balance = 0.0)).toInt()
+                            val dateLong = try {
+                                SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).parse(dateString)?.time ?: System.currentTimeMillis()
+                            } catch (e: Exception) {
+                                System.currentTimeMillis()
+                            }
+
+                            var matchCat = cats.find { it.name.trim().lowercase() == catName.trim().lowercase() }
+                            if (matchCat == null && catName.isNotEmpty() && catName != "None") {
+                                val newCatId = repository.insertCategory(CategoryEntity(name = catName, type = type, icon = "restaurant", color = "#7f8c8d")).toInt()
+                                matchCat = CategoryEntity(id = newCatId, name = catName, type = type, icon = "restaurant", color = "#7f8c8d")
+                            }
+
+                            var matchAcc = accs.find { it.name.trim().lowercase() == accName.trim().lowercase() }
+                            var actId = defaultAccountId
+                            if (matchAcc != null) {
+                                actId = matchAcc.id
+                            } else if (accName.isNotEmpty() && accName != "Unknown") {
+                                actId = repository.insertAccount(AccountEntity(name = accName, type = "Bank", balance = 0.0, isSecondCountry = _isSecondCountryActive.value)).toInt()
+                            }
+
+                            val tx = TransactionEntity(
+                                amount = amount,
+                                type = type,
+                                categoryId = matchCat?.id,
+                                accountId = actId,
+                                date = dateLong,
+                                note = note,
+                                isSecondCountry = _isSecondCountryActive.value
+                            )
+                            repository.insertTransaction(tx)
                         }
-
-                        val tx = TransactionEntity(
-                            amount = amount,
-                            type = type,
-                            categoryId = matchCat?.id,
-                            accountId = actId,
-                            date = dateLong,
-                            note = note
-                        )
-                        repository.insertTransaction(tx)
                     }
                 }
+
                 computeSmartInsights()
                 onSuccess()
             } catch (e: Exception) {
@@ -746,9 +936,75 @@ class WealthViewModel(application: Application) : AndroidViewModel(application) 
             System.currentTimeMillis()
         }
     }
+
+    private val _notifications = MutableStateFlow<List<NotificationInfo>>(
+        listOf(
+            NotificationInfo(
+                title = "Welcome to CashFlow! 🎉",
+                description = "Your personal wealth manager has been successfully set up. Let's start tracking your visual bento of finance!",
+                time = "just now"
+            )
+        )
+    )
+    val notifications: StateFlow<List<NotificationInfo>> = _notifications.asStateFlow()
+
+    fun addNotification(title: String, description: String) {
+        val newList = _notifications.value.toMutableList()
+        newList.add(0, NotificationInfo(title = title, description = description, time = "just now"))
+        _notifications.value = newList
+
+        // Send a real-time Android system notification
+        try {
+            val context = getApplication<Application>().applicationContext
+            val intent = android.content.Intent(context, com.example.MainActivity::class.java).apply {
+                flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
+            val pendingIntent = android.app.PendingIntent.getActivity(
+                context,
+                System.currentTimeMillis().toInt(),
+                intent,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val builder = androidx.core.app.NotificationCompat.Builder(context, "cashflow_reminders")
+                .setSmallIcon(com.example.R.mipmap.ic_launcher)
+                .setContentTitle(title)
+                .setContentText(description)
+                .setPriority(androidx.core.app.NotificationCompat.PRIORITY_MAX)
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true)
+
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+            
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                val channel = android.app.NotificationChannel(
+                    "cashflow_reminders",
+                    "CashFlow Reminders",
+                    android.app.NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    this.description = "Daily bookkeeping and EMI payment reminders"
+                }
+                notificationManager.createNotificationChannel(channel)
+            }
+            
+            notificationManager.notify(System.currentTimeMillis().toInt(), builder.build())
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    fun clearNotifications() {
+        _notifications.value = emptyList()
+    }
 }
 
 // Data Classes for custom aggregates
+data class NotificationInfo(
+    val id: String = java.util.UUID.randomUUID().toString(),
+    val title: String,
+    val description: String,
+    val time: String = "just now"
+)
 data class BudgetWithDetails(
     val categoryId: Int,
     val categoryName: String,
