@@ -35,7 +35,8 @@ class MainActivity : ComponentActivity() {
     setContent {
       val wealthViewModel: WealthViewModel = viewModel()
       val isDarkTheme by wealthViewModel.isDarkMode.collectAsState()
-      MyApplicationTheme(darkTheme = isDarkTheme) {
+      val colorTheme by wealthViewModel.colorTheme.collectAsState()
+      MyApplicationTheme(darkTheme = isDarkTheme, colorTheme = colorTheme) {
         Surface(color = MaterialTheme.colorScheme.background) {
           AppNavigation(viewModel = wealthViewModel)
         }
