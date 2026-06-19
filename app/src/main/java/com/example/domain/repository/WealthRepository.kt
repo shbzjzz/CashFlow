@@ -5,8 +5,8 @@ import kotlinx.coroutines.flow.Flow
 
 interface WealthRepository {
     // Accounts
-    fun getAllAccountsFlow(): Flow<List<AccountEntity>>
-    suspend fun getAllAccounts(): List<AccountEntity>
+    fun getAllAccountsFlow(isSecondCountry: Boolean): Flow<List<AccountEntity>>
+    suspend fun getAllAccounts(isSecondCountry: Boolean): List<AccountEntity>
     suspend fun getAccountById(id: Int): AccountEntity?
     suspend fun insertAccount(account: AccountEntity): Long
     suspend fun updateAccount(account: AccountEntity)
@@ -22,24 +22,31 @@ interface WealthRepository {
     suspend fun initDefaultCategories()
 
     // Transactions
-    fun getAllTransactionsFlow(): Flow<List<TransactionEntity>>
-    suspend fun getAllTransactions(): List<TransactionEntity>
+    fun getAllTransactionsFlow(isSecondCountry: Boolean): Flow<List<TransactionEntity>>
+    suspend fun getAllTransactions(isSecondCountry: Boolean): List<TransactionEntity>
     suspend fun getTransactionById(id: Int): TransactionEntity?
     suspend fun insertTransaction(transaction: TransactionEntity): Long
     suspend fun updateTransaction(transaction: TransactionEntity)
     suspend fun deleteTransaction(transaction: TransactionEntity)
-    fun getTransactionsInRangeFlow(start: Long, end: Long): Flow<List<TransactionEntity>>
+    fun getTransactionsInRangeFlow(start: Long, end: Long, isSecondCountry: Boolean): Flow<List<TransactionEntity>>
 
     // Budgets
-    fun getBudgetsForMonthFlow(month: String): Flow<List<BudgetEntity>>
-    suspend fun getBudgetsForMonth(month: String): List<BudgetEntity>
+    fun getBudgetsForMonthFlow(month: String, isSecondCountry: Boolean): Flow<List<BudgetEntity>>
+    suspend fun getBudgetsForMonth(month: String, isSecondCountry: Boolean): List<BudgetEntity>
     suspend fun insertBudget(budget: BudgetEntity): Long
     suspend fun updateBudget(budget: BudgetEntity)
     suspend fun deleteBudget(budget: BudgetEntity)
 
     // EMIs
-    fun getAllEMIsFlow(): Flow<List<EMIEntity>>
+    fun getAllEMIsFlow(isSecondCountry: Boolean): Flow<List<EMIEntity>>
     suspend fun insertEMI(emi: EMIEntity): Long
     suspend fun updateEMI(emi: EMIEntity)
     suspend fun deleteEMI(emi: EMIEntity)
+
+    // Backup & Restore
+    suspend fun getAllAccountsDirect(): List<AccountEntity>
+    suspend fun getAllTransactionsDirect(): List<TransactionEntity>
+    suspend fun getAllBudgetsDirect(): List<BudgetEntity>
+    suspend fun getAllEMIsDirect(): List<EMIEntity>
+    suspend fun clearAllData()
 }

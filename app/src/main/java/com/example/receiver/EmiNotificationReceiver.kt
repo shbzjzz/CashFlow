@@ -49,6 +49,64 @@ class EmiNotificationReceiver : BroadcastReceiver() {
 }
 
 object EmiAlarmScheduler {
+    fun scheduleEmiAlertAtDate(context: Context, emiTitle: String, dueDateMillis: Long, amount: Double, currency: String) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        
+        val calendar = java.util.Calendar.getInstance().apply {
+            timeInMillis = dueDateMillis
+            set(java.util.Calendar.HOUR_OF_DAY, 9)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }
+        
+        val triggerTime = if (calendar.timeInMillis <= System.currentTimeMillis()) {
+            System.currentTimeMillis() + 3000
+        } else {
+            calendar.timeInMillis
+        }
+        
+        val formattedAmount = String.format(java.util.Locale.getDefault(), "%,.2f", amount)
+        val intent = Intent(context, EmiNotificationReceiver::class.java).apply {
+            putExtra("title", "Payment Due: $emiTitle 🏷️")
+            putExtra("message", "Your installment of $currency $formattedAmount is due today. Protect your CashFlow!")
+        }
+        
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            emiTitle.hashCode(),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        
+        // Immediate sandbox confirmation
+        val intentDemo = Intent(context, EmiNotificationReceiver::class.java).apply {
+            putExtra("title", "CashFlow Shield: Installment Active 🏷️")
+            putExtra("message", "Schedule verified: Alarm registered for '$emiTitle' on selected due date.")
+        }
+        val pendingIntentDemo = PendingIntent.getBroadcast(
+            context,
+            emiTitle.hashCode() + 1,
+            intentDemo,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        
+        try {
+            alarmManager.set(
+                AlarmManager.RTC_WAKEUP,
+                triggerTime,
+                pendingIntent
+            )
+            alarmManager.set(
+                AlarmManager.RTC_WAKEUP,
+                System.currentTimeMillis() + 2000,
+                pendingIntentDemo
+            )
+        } catch (e: SecurityException) {
+            // Ignored, requires exact alarm permission on Android 14+
+        }
+    }
+
     fun scheduleEmiAlert(context: Context, emiTitle: String, dueDay: Int) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         

@@ -15,7 +15,7 @@ import com.example.data.model.*
         BudgetEntity::class,
         EMIEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

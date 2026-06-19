@@ -88,14 +88,16 @@ class NotificationReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val db = AppDatabase.getDatabase(context)
-                val emis = db.emiDao().getAllEMIs() // suspend/regular call? Wait, standard is Flow or List
-                // Let's safe-check what emi Dao offers.
-                // If it is Room, we can fetch all EMIs.
-                // Let's look at EMI due dates.
+                
+                // Track for both countries
+                val normalEmis = db.emiDao().getAllEMIs(false)
+                val secondEmis = db.emiDao().getAllEMIs(true)
+                val allEmis = normalEmis + secondEmis
+                
                 val cal = Calendar.getInstance()
                 val currentDayOfMonth = cal.get(Calendar.DAY_OF_MONTH)
 
-                for (emi in emis) {
+                for (emi in allEmis) {
                     val remaining = emi.totalAmount - emi.paidAmount
                     if (remaining > 0.0) {
                         // Extract digit/numeric day from due date (e.g., "10th", "25", "15th")
