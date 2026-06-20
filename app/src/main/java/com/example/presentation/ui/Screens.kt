@@ -23,6 +23,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -63,9 +65,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.ui.unit.IntOffset
-import com.example.ui.theme.SuccessGreen
-import com.example.ui.theme.CashFlowPrimary
-import com.example.ui.theme.IndigoGlow
+import com.example.ui.theme.*
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -1490,7 +1490,7 @@ fun NotificationsScreen(viewModel: WealthViewModel, navController: NavController
             ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(Spacing.lg)
                 ) {
                     Icon(
                         imageVector = Icons.Default.NotificationsNone,
@@ -1516,8 +1516,8 @@ fun NotificationsScreen(viewModel: WealthViewModel, navController: NavController
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingVals)
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                    .padding(horizontal = Spacing.lg),
+                verticalArrangement = Arrangement.spacedBy(Spacing.md)
             ) {
                 item {
                     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
@@ -1530,30 +1530,43 @@ fun NotificationsScreen(viewModel: WealthViewModel, navController: NavController
                 }
                 items(notifications) { notif ->
                     Card(
+redesign/mint-finance-skin
                         shape = RoundedCornerShape(18.dp),
+
+                        shape = RoundedCornerShape(Corners.lg),
+main
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
                         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
-                            modifier = Modifier.padding(16.dp),
+                            modifier = Modifier.padding(Spacing.lg),
                             verticalAlignment = Alignment.Top
                         ) {
                             Box(
                                 modifier = Modifier
+     redesign/mint-finance-skin
                                     .size(42.dp)
                                     .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), CircleShape),
+  
+                                    .size(Sizes.iconXl)
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = Opacity.hovered), CircleShape),
+  main
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Notifications,
                                     contentDescription = "Alert",
                                     tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(Sizes.iconSm)
                                 )
                             }
+ redesign/mint-finance-skin
                             Spacer(modifier = Modifier.width(14.dp))
+
+                            Spacer(modifier = Modifier.width(Spacing.lg))
+ main
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = notif.title,
@@ -1619,21 +1632,23 @@ fun DashboardScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingVals)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+                .padding(horizontal = Spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(Spacing.xl)
         ) {
             // Net Worth Hero Card
             item {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 8.dp),
-                    shape = RoundedCornerShape(28.dp),
+                        .padding(top = Spacing.sm)
+                        .shadow(Shadows.Light.medium, RoundedCornerShape(Corners.xxl)),
+                    shape = RoundedCornerShape(Corners.xxl),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.primary
                     ),
                     elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
                 ) {
+ redesign/mint-finance-skin
                     Box(
                         modifier = Modifier
                             .background(
@@ -1681,6 +1696,42 @@ fun DashboardScreen(
                                     Text("Expense", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.75f), fontWeight = FontWeight.Medium)
                                     Text("$currency ${String.format(Locale.getDefault(), "%,.0f", totalExpense)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = Color.White)
                                 }
+
+                    Column(
+                        modifier = Modifier.padding(Spacing.xxl),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.sm)
+                    ) {
+                        Text(
+                            "Net Worth",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = Opacity.subtle),
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            "$currency ${String.format(Locale.getDefault(), "%,.2f", netWorth)}",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Black,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+
+                        Spacer(modifier = Modifier.height(Spacing.lg))
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color.White.copy(alpha = Opacity.pressed), RoundedCornerShape(Corners.lg))
+                                .padding(Spacing.lg),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text("Income", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = Opacity.subtle))
+                                Text("$currency ${String.format(Locale.getDefault(), "%,.0f", totalIncome)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.White)
+                            }
+                            Box(modifier = Modifier.width(Sizes.dividerThickness).height(32.dp).background(Color.White.copy(alpha = Opacity.pressed)))
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text("Expense", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = Opacity.subtle))
+                                Text("$currency ${String.format(Locale.getDefault(), "%,.0f", totalExpense)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.White)
+ main
                             }
                         }
                     }
@@ -1773,6 +1824,7 @@ fun DashboardScreen(
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
+ redesign/mint-finance-skin
                                     .clickable { inspectingTransaction = tx },
                                 shape = RoundedCornerShape(18.dp),
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -1788,24 +1840,64 @@ fun DashboardScreen(
                                             modifier = Modifier
                                                 .size(44.dp)
                                                 .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f), CircleShape),
+
+                                    .clickable { inspectingTransaction = tx }
+                                    .shadow(Shadows.Light.subtle, RoundedCornerShape(Corners.lg)),
+                                shape = RoundedCornerShape(Corners.lg),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.lg, vertical = Spacing.md),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(Spacing.lg), verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(44.dp)
+                                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = Opacity.hovered), CircleShape),
+ main
                                             contentAlignment = Alignment.Center
                                         ) {
                                             Icon(
                                                 IconsUtil.getIcon(category?.icon ?: "receipt"),
                                                 contentDescription = null,
+ redesign/mint-finance-skin
                                                 tint = MaterialTheme.colorScheme.onPrimaryContainer
                                             )
                                         }
                                         Column {
                                             Text(category?.name ?: tx.type, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                                             Text(tx.note.ifEmpty { "Transaction" }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(Sizes.iconMd)
+                                            )
+                                        }
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(category?.name ?: tx.type, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                                            Text(tx.note.ifEmpty { "Transaction" }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        }
+                                        if (hasSecondCountry) {
+                                            CountryBadge(
+                                                flag = if (tx.isSecondCountry) "🌐" else "🏠",
+                                                countryCode = if (tx.isSecondCountry) "OTHER" else "HOME",
+                                                size = 24.dp
+                                            )
+ main
                                         }
                                     }
                                     Text(
                                         text = "${if (tx.type == "Income") "+" else "-"} $currency ${tx.amount}",
+ redesign/mint-finance-skin
                                         style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.SemiBold,
                                         color = if (tx.type == "Income") Color(0xFF5BB98C) else MaterialTheme.colorScheme.error
+
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (tx.type == "Income") SuccessGreen else MaterialTheme.colorScheme.error
+ main
                                     )
                                 }
                             }
@@ -1818,16 +1910,27 @@ fun DashboardScreen(
     }
 
     // FAB
+ redesign/mint-finance-skin
     Box(modifier = Modifier.fillMaxSize().padding(20.dp), contentAlignment = Alignment.BottomEnd) {
+
+    Box(modifier = Modifier.fillMaxSize().padding(Spacing.lg), contentAlignment = Alignment.BottomEnd) {
+ main
         FloatingActionButton(
             onClick = { navController.navigate(Routes.ADD_TRANSACTION) },
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary,
+ redesign/mint-finance-skin
             shape = RoundedCornerShape(20.dp),
             elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 6.dp, pressedElevation = 4.dp),
             modifier = Modifier.testTag("add_transaction_fab")
         ) {
             Icon(Icons.Default.Add, contentDescription = "Add", modifier = Modifier.size(26.dp))
+
+            shape = RoundedCornerShape(Corners.lg),
+            modifier = Modifier.testTag("add_transaction_fab").shadow(Shadows.Light.strong, RoundedCornerShape(Corners.lg))
+        ) {
+            Icon(Icons.Default.Add, contentDescription = "Add", modifier = Modifier.size(Sizes.iconMd))
+ main
         }
     }
 
@@ -2439,7 +2542,7 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
         bottomBar = {
             Surface(
                 color = MaterialTheme.colorScheme.surface,
-                shadowElevation = 8.dp
+                shadowElevation = Shadows.Light.medium
             ) {
                 Button(
                     onClick = {
@@ -2462,8 +2565,13 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
                     },
                     modifier = Modifier
                         .fillMaxWidth()
+ redesign/mint-finance-skin
                         .padding(16.dp)
                         .height(54.dp)
+
+                        .padding(Spacing.lg)
+                        .height(52.dp)
+ main
                         .testTag("submit_button"),
                     shape = RoundedCornerShape(18.dp),
                     colors = ButtonDefaults.buttonColors(
@@ -2473,8 +2581,13 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
                     elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp, pressedElevation = 2.dp)
                 ) {
                     Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+ redesign/mint-finance-skin
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Save Transaction", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+
+                    Spacer(modifier = Modifier.width(Spacing.sm))
+                    Text("Save Transaction", style = MaterialTheme.typography.labelLarge)
+ main
                 }
             }
         },
@@ -2485,8 +2598,8 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
                 .fillMaxSize()
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(Spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(Spacing.lg)
         ) {
             // ── Transaction Type Tab ──────────────────────────
             val typeColors = mapOf(
@@ -2502,7 +2615,7 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(Corners.lg))
                     .padding(4.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
@@ -2512,7 +2625,7 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
                     Row(
                         modifier = Modifier
                             .weight(1f)
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(Corners.md))
                             .background(if (isSelected) tabColor.copy(alpha = 0.15f) else Color.Transparent)
                             .clickable {
                                 type = tab
@@ -2547,9 +2660,9 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(activeTypeColor.copy(alpha = 0.08f))
-                    .padding(vertical = 24.dp),
+                    .clip(RoundedCornerShape(Corners.xl))
+                    .background(activeTypeColor.copy(alpha = Opacity.hovered))
+                    .padding(vertical = Spacing.xxl),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -2595,7 +2708,7 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
                 modifier = Modifier.fillMaxWidth(),
                 isDark = isDark
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
                     Text(
                         text = "TRANSACTION LEDGER DETAILS",
                         fontSize = 12.sp,
@@ -2614,15 +2727,15 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Row(
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(42.dp)
-                                        .clip(CircleShape)
-                                        .background(
-                                            if (selectedCategory != null) parseHexColor(selectedCategory!!.color).copy(alpha = 0.15f)
+                            horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(42.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (selectedCategory != null) parseHexColor(selectedCategory!!.color).copy(alpha = 0.15f)
                                             else (if (isDark) Color(0xFF1E2F29) else Color(0xFFEFF4FF))
                                         ),
                                     contentAlignment = Alignment.Center
@@ -2665,7 +2778,7 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(Spacing.md),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Box(
@@ -2713,7 +2826,7 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Row(
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(Spacing.md),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Box(
@@ -2765,7 +2878,7 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(Spacing.md),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Box(
@@ -2810,7 +2923,7 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
                 modifier = Modifier.fillMaxWidth(),
                 isDark = isDark
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                     Text(
                         text = "TRANSACTION NOTE / MEMO",
                         fontSize = 11.sp,
@@ -2854,7 +2967,7 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
                                 tint = if (isDark) Color(0xFFE2A93B) else Color(0xFFA87B4D),
                                 modifier = Modifier.size(16.dp)
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(Spacing.sm))
                             Text(
                                 "Upload Receipt Image",
                                 color = if (isDark) Color(0xFFE8F0EB) else Color(0xFF22372E),
@@ -2867,7 +2980,7 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(160.dp)
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(RoundedCornerShape(Corners.md))
                                 .background(Color.Black.copy(alpha = 0.05f))
                         ) {
                             AsyncImage(
@@ -2880,8 +2993,8 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
                                 onClick = { imagePathState = null },
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
-                                    .padding(8.dp)
-                                    .background(Color.Black.copy(alpha = 0.6f), CircleShape)
+                                    .padding(Spacing.sm)
+                                    .background(Color.Black.copy(alpha = Opacity.subtle), CircleShape)
                                     .size(28.dp)
                             ) {
                                 Icon(
@@ -2927,10 +3040,10 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
                                     }
                                     .background(
                                         if (isDark) Color(0xFF1A2622) else Color(0xFFF4F8F6),
-                                        RoundedCornerShape(12.dp)
+                                        RoundedCornerShape(Corners.md)
                                     )
-                                    .padding(12.dp),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                    .padding(Spacing.md),
+                                horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Box(
@@ -2989,10 +3102,10 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
                                     }
                                     .background(
                                         if (isDark) Color(0xFF1A2622) else Color(0xFFF4F8F6),
-                                        RoundedCornerShape(12.dp)
+                                        RoundedCornerShape(Corners.md)
                                     )
-                                    .padding(12.dp),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                    .padding(Spacing.md),
+                                horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Box(
@@ -3058,9 +3171,9 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
                                     }
                                     .background(
                                         if (isDark) Color(0xFF1A2622) else Color(0xFFF4F8F6),
-                                        RoundedCornerShape(12.dp)
+                                        RoundedCornerShape(Corners.md)
                                     )
-                                    .padding(12.dp),
+                                    .padding(Spacing.md),
                                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -3130,40 +3243,52 @@ fun AccountsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingVals)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+                .padding(horizontal = Spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(Spacing.xl)
         ) {
             // Net Worth Bento Card
             item {
                 Card(
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    shape = RoundedCornerShape(24.dp),
+                    modifier = Modifier.fillMaxWidth().padding(top = Spacing.sm).shadow(Shadows.Light.soft, RoundedCornerShape(Corners.xl)),
+                    shape = RoundedCornerShape(Corners.xl),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
-                    Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Column(modifier = Modifier.padding(Spacing.xl), verticalArrangement = Arrangement.spacedBy(Spacing.lg)) {
                         Column {
                             Text("Total Net Worth", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text("$currency ${String.format(Locale.getDefault(), "%,.2f", netWorth)}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
                         }
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
                             Card(
                                 modifier = Modifier.weight(1f),
+ redesign/mint-finance-skin
                                 shape = RoundedCornerShape(14.dp),
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.07f))
                             ) {
                                 Column(modifier = Modifier.padding(14.dp)) {
+
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = Opacity.hovered))
+                            ) {
+                                Column(modifier = Modifier.padding(Spacing.md)) {
+ main
                                     Text("Assets", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     Text("$currency ${String.format(Locale.getDefault(), "%,.0f", totalAssets)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
                                 }
                             }
                             Card(
                                 modifier = Modifier.weight(1f),
+ redesign/mint-finance-skin
                                 shape = RoundedCornerShape(14.dp),
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.07f))
                             ) {
                                 Column(modifier = Modifier.padding(14.dp)) {
+
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.error.copy(alpha = Opacity.hovered))
+                            ) {
+                                Column(modifier = Modifier.padding(Spacing.md)) {
+ main
                                     Text("Liabilities", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     Text("$currency ${String.format(Locale.getDefault(), "%,.0f", totalLiabilities)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.error)
                                 }
@@ -3190,8 +3315,15 @@ fun AccountsScreen(
             items(accounts) { acc ->
                 var showMenu by remember { mutableStateOf(false) }
                 Card(
+ redesign/mint-finance-skin
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(18.dp),
+
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(Shadows.Light.subtle, RoundedCornerShape(Corners.lg)),
+                    shape = RoundedCornerShape(Corners.lg),
+ main
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
                     elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
@@ -3199,35 +3331,50 @@ fun AccountsScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
+                            .padding(Spacing.lg),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
                             modifier = Modifier.weight(1f)
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(44.dp)
-                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f), CircleShape),
+                                    .size(Sizes.iconXl)
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = Opacity.hovered), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     IconsUtil.getIcon(when(acc.type) { "Bank" -> "account_balance" "Cash" -> "payments" else -> "credit_card" }),
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(22.dp)
+                                    modifier = Modifier.size(Sizes.iconMd)
                                 )
                             }
-                            Column {
-                                Text(
-                                    text = acc.name,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = acc.name,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.weight(1f),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    if (!viewModel.isSecondCountryActive.collectAsStateWithLifecycle().value.not()) {
+                                        CountryBadge(
+                                            flag = if (acc.isSecondCountry) "🌐" else "🏠",
+                                            countryCode = if (acc.isSecondCountry) "SEC" else "PRI",
+                                            size = 20.dp
+                                        )
+                                    }
+                                }
                                 Text(
                                     text = acc.type,
                                     style = MaterialTheme.typography.bodySmall,
@@ -3235,32 +3382,32 @@ fun AccountsScreen(
                                 )
                             }
                         }
-                        
+
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
                         ) {
                             Card(
                                 colors = CardDefaults.cardColors(
                                     containerColor = if (acc.balance >= 0) {
-                                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f)
+                                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = Opacity.hovered)
                                     } else {
-                                        MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f)
+                                        MaterialTheme.colorScheme.errorContainer.copy(alpha = Opacity.hovered)
                                     }
                                 ),
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(Corners.md)
                             ) {
                                 Text(
                                     text = "$currency ${String.format(Locale.getDefault(), "%,.2f", acc.balance)}",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Black,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.ExtraBold,
                                     color = if (acc.balance >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                    modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm)
                                 )
                             }
                             Box {
-                                IconButton(onClick = { showMenu = true }, modifier = Modifier.size(32.dp)) {
-                                    Icon(Icons.Default.MoreVert, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                IconButton(onClick = { showMenu = true }, modifier = Modifier.size(Sizes.touchMinimum)) {
+                                    Icon(Icons.Default.MoreVert, contentDescription = null, modifier = Modifier.size(Sizes.iconSm), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                                 DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                                     DropdownMenuItem(text = { Text("Delete") }, onClick = { viewModel.deleteAccount(acc); showMenu = false })
@@ -3398,7 +3545,7 @@ fun CategoriesScreen(viewModel: WealthViewModel, navController: NavController) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingVals)
-                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .padding(horizontal = Spacing.lg, vertical = Spacing.sm)
         ) {
             // Tab selection
             TabRow(
@@ -3424,6 +3571,7 @@ fun CategoriesScreen(viewModel: WealthViewModel, navController: NavController) {
                 }
             ) {
                 Tab(selected = activeTab == "All", onClick = { activeTab = "All" }) {
+ redesign/mint-finance-skin
                     Text("All Log", modifier = Modifier.padding(12.dp), color = if (activeTab == "All") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f), fontWeight = if (activeTab == "All") FontWeight.SemiBold else FontWeight.Normal)
                 }
                 Tab(selected = activeTab == "Income", onClick = { activeTab = "Income" }) {
@@ -3431,10 +3579,19 @@ fun CategoriesScreen(viewModel: WealthViewModel, navController: NavController) {
                 }
                 Tab(selected = activeTab == "Expense", onClick = { activeTab = "Expense" }) {
                     Text("Expense", modifier = Modifier.padding(12.dp), color = if (activeTab == "Expense") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f), fontWeight = if (activeTab == "Expense") FontWeight.SemiBold else FontWeight.Normal)
+
+                    Text("All Log", modifier = Modifier.padding(Spacing.md), color = if (activeTab == "All") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground.copy(alpha = Opacity.subtle), fontWeight = if (activeTab == "All") FontWeight.Bold else FontWeight.Normal)
+                }
+                Tab(selected = activeTab == "Income", onClick = { activeTab = "Income" }) {
+                    Text("Income", modifier = Modifier.padding(Spacing.md), color = if (activeTab == "Income") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground.copy(alpha = Opacity.subtle), fontWeight = if (activeTab == "Income") FontWeight.Bold else FontWeight.Normal)
+                }
+                Tab(selected = activeTab == "Expense", onClick = { activeTab = "Expense" }) {
+                    Text("Expense", modifier = Modifier.padding(Spacing.md), color = if (activeTab == "Expense") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground.copy(alpha = Opacity.subtle), fontWeight = if (activeTab == "Expense") FontWeight.Bold else FontWeight.Normal)
+ main
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(Spacing.lg))
 
             // Log listing
             val filteredTxs = remember(transactions, activeTab) {
@@ -3449,7 +3606,7 @@ fun CategoriesScreen(viewModel: WealthViewModel, navController: NavController) {
                 ) {
                     Text(
                         text = "No transactions logged in this category",
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = Opacity.subtle),
                         fontSize = 14.sp
                     )
                 }
@@ -3463,25 +3620,38 @@ fun CategoriesScreen(viewModel: WealthViewModel, navController: NavController) {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+ redesign/mint-finance-skin
                             shape = RoundedCornerShape(18.dp),
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
                             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+
+                            shape = RoundedCornerShape(Corners.md),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
+ main
                         ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(16.dp),
+                                    .padding(Spacing.lg),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Row(
+ redesign/mint-finance-skin
                                     horizontalArrangement = Arrangement.spacedBy(14.dp),
+
+                                    horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
+ main
                                     modifier = Modifier.weight(1f),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Box(
                                         modifier = Modifier
+ redesign/mint-finance-skin
                                             .size(42.dp)
+
+                                            .size(Sizes.iconXl)
+ main
                                             .clip(CircleShape)
                                             .background(parseHexColor(cat?.color ?: "#7F8C8D").copy(alpha = 0.18f)),
                                         contentAlignment = Alignment.Center
@@ -3509,7 +3679,7 @@ fun CategoriesScreen(viewModel: WealthViewModel, navController: NavController) {
                                 }
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
                                 ) {
                                     Text(
                                         text = "$currency ${tx.amount}",
@@ -3981,9 +4151,11 @@ fun SettingsScreen(
     val savedPin by viewModel.savedPin.collectAsStateWithLifecycle()
     val isDarkMode by viewModel.isDarkMode.collectAsStateWithLifecycle()
     val currency by viewModel.currency.collectAsStateWithLifecycle()
+    val colorTheme by viewModel.colorTheme.collectAsStateWithLifecycle()
 
     var showPinDialog by remember { mutableStateOf(false) }
     var pinInputValue by remember { mutableStateOf("") }
+    var showColorThemeMenu by remember { mutableStateOf(false) }
 
     val fileChooserLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
@@ -4069,7 +4241,71 @@ fun SettingsScreen(
                 }
             }
 
-            // Currency selector removed as requested
+            // Color Theme Selector
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = cardBg),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                border = BorderStroke(1.dp, dividerColor)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showColorThemeMenu = true }
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    SettingsIconBox(icon = Icons.Default.Palette, tint = accentColor)
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Color Theme", style = MaterialTheme.typography.titleSmall, color = primaryText)
+                        Text(colorTheme.label, style = MaterialTheme.typography.bodySmall, color = subtleText)
+                    }
+                    Icon(Icons.Default.ChevronRight, contentDescription = null, tint = subtleText, modifier = Modifier.size(18.dp))
+                }
+            }
+
+            if (showColorThemeMenu) {
+                Dialog(onDismissRequest = { showColorThemeMenu = false }, properties = DialogProperties(usePlatformDefaultWidth = true)) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth(0.9f)
+                            .padding(16.dp),
+                        shape = RoundedCornerShape(Corners.xl)
+                    ) {
+                        Column(modifier = Modifier.padding(Spacing.lg)) {
+                            Text("Select Color Theme", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = Spacing.lg))
+
+                            ColorTheme.values().forEach { theme ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(Corners.lg))
+                                        .clickable {
+                                            viewModel.setColorTheme(theme)
+                                            showColorThemeMenu = false
+                                        }
+                                        .padding(Spacing.md),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(Spacing.md)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .background(theme.light, CircleShape)
+                                            .border(if (colorTheme == theme) 2.dp else 0.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                                    )
+                                    Text(theme.label, modifier = Modifier.weight(1f))
+                                    if (colorTheme == theme) {
+                                        Icon(Icons.Default.Check, contentDescription = "Selected", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(Sizes.iconSm))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
 
             // ── DATA ─────────────────────────────────────────────
             SettingsSectionLabel(label = "Data", color = sectionLabelColor)

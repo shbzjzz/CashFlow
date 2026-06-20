@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
+ redesign/mint-finance-skin
 // ─────────────────────────────────────────────────────────────
 //  Mint Finance — Color Schemes
 //  Light: warm cream surfaces, sage primary, deep forest text
@@ -104,25 +105,72 @@ private val DarkColorScheme = darkColorScheme(
     onErrorContainer   = Color(0xFFFBE2DD),
 
     scrim              = Color(0xCC000000),
+
+@Composable
+private fun buildDarkColorScheme(theme: ColorTheme) = darkColorScheme(
+    primary = theme.dark,
+    onPrimary = Color(0xFF1E1B4B),
+    primaryContainer = Color(0xFF312E81),
+    onPrimaryContainer = Color(0xFFE0E7FF),
+    secondary = theme.secondary,
+    onSecondary = Color.White,
+    tertiary = SuccessGreen,
+    background = BackgroundDark,
+    onBackground = TextDark,
+    surface = SurfaceDark,
+    onSurface = TextDark,
+    surfaceVariant = SurfaceDarkElevated,
+    onSurfaceVariant = SecondaryTextDark,
+    outlineVariant = Color(0xFF3F3F5A),
+    error = ErrorRed
+)
+
+@Composable
+private fun buildLightColorScheme(theme: ColorTheme) = lightColorScheme(
+    primary = theme.light,
+    onPrimary = Color.White,
+    primaryContainer = theme.container,
+    onPrimaryContainer = Color(0xFF312E81),
+    secondary = theme.secondary,
+    onSecondary = Color.White,
+    tertiary = SuccessGreen,
+    background = BackgroundLight,
+    onBackground = TextLight,
+    surface = SurfaceLight,
+    onSurface = TextLight,
+    surfaceVariant = Color(0xFFF0F0FF),
+    onSurfaceVariant = SecondaryTextLight,
+    outlineVariant = Color(0xFFE2E2F0),
+    error = ErrorRed
+ main
 )
 
 @Composable
 fun MyApplicationTheme(
+ redesign/mint-finance-skin
   darkTheme: Boolean = isSystemInDarkTheme(),
   // Disable dynamic color by default so the Mint Finance brand identity is preserved
   dynamicColor: Boolean = false,
   content: @Composable () -> Unit,
-) {
-  val colorScheme =
-    when {
-      dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-        val context = LocalContext.current
-        if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-      }
 
-      darkTheme -> DarkColorScheme
-      else -> LightColorScheme
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    colorTheme: ColorTheme = defaultColorTheme,
+    dynamicColor: Boolean = false,
+    content: @Composable () -> Unit,
+ main
+) {
+    val colorScheme = when {
+        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+            val context = LocalContext.current
+            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        }
+        darkTheme -> buildDarkColorScheme(colorTheme)
+        else -> buildLightColorScheme(colorTheme)
     }
 
+ redesign/mint-finance-skin
   MaterialTheme(colorScheme = colorScheme, typography = Typography, content = content)
+
+    MaterialTheme(colorScheme = colorScheme, typography = Typography, content = content)
+ main
 }
