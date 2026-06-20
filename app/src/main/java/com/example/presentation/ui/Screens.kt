@@ -1466,7 +1466,7 @@ fun NotificationsScreen(viewModel: WealthViewModel, navController: NavController
             ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(Spacing.lg)
                 ) {
                     Icon(
                         imageVector = Icons.Default.NotificationsNone,
@@ -1492,8 +1492,8 @@ fun NotificationsScreen(viewModel: WealthViewModel, navController: NavController
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingVals)
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                    .padding(horizontal = Spacing.lg),
+                verticalArrangement = Arrangement.spacedBy(Spacing.md)
             ) {
                 item {
                     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
@@ -1506,29 +1506,29 @@ fun NotificationsScreen(viewModel: WealthViewModel, navController: NavController
                 }
                 items(notifications) { notif ->
                     Card(
-                        shape = RoundedCornerShape(16.dp),
+                        shape = RoundedCornerShape(Corners.lg),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
-                            modifier = Modifier.padding(16.dp),
+                            modifier = Modifier.padding(Spacing.lg),
                             verticalAlignment = Alignment.Top
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(40.dp)
-                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f), CircleShape),
+                                    .size(Sizes.iconXl)
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = Opacity.hovered), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Notifications,
                                     contentDescription = "Alert",
                                     tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(Sizes.iconSm)
                                 )
                             }
-                            Spacer(modifier = Modifier.width(16.dp))
+                            Spacer(modifier = Modifier.width(Spacing.lg))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = notif.title,
@@ -2407,7 +2407,7 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
         bottomBar = {
             Surface(
                 color = MaterialTheme.colorScheme.surface,
-                shadowElevation = 8.dp
+                shadowElevation = Shadows.Light.medium
             ) {
                 Button(
                     onClick = {
@@ -2430,14 +2430,14 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp)
+                        .padding(Spacing.lg)
                         .height(52.dp)
                         .testTag("submit_button"),
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
                     Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(Spacing.sm))
                     Text("Save Transaction", style = MaterialTheme.typography.labelLarge)
                 }
             }
@@ -2449,8 +2449,8 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
                 .fillMaxSize()
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(Spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(Spacing.lg)
         ) {
             // ── Transaction Type Tab ──────────────────────────
             val typeColors = mapOf(
@@ -2466,7 +2466,7 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(Corners.lg))
                     .padding(4.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
@@ -2476,7 +2476,7 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
                     Row(
                         modifier = Modifier
                             .weight(1f)
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(Corners.md))
                             .background(if (isSelected) tabColor.copy(alpha = 0.15f) else Color.Transparent)
                             .clickable {
                                 type = tab
@@ -2511,9 +2511,9 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(activeTypeColor.copy(alpha = 0.08f))
-                    .padding(vertical = 24.dp),
+                    .clip(RoundedCornerShape(Corners.xl))
+                    .background(activeTypeColor.copy(alpha = Opacity.hovered))
+                    .padding(vertical = Spacing.xxl),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -2559,7 +2559,7 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
                 modifier = Modifier.fillMaxWidth(),
                 isDark = isDark
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
                     Text(
                         text = "TRANSACTION LEDGER DETAILS",
                         fontSize = 12.sp,
@@ -2578,15 +2578,15 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Row(
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(42.dp)
-                                        .clip(CircleShape)
-                                        .background(
-                                            if (selectedCategory != null) parseHexColor(selectedCategory!!.color).copy(alpha = 0.15f)
+                            horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(42.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (selectedCategory != null) parseHexColor(selectedCategory!!.color).copy(alpha = 0.15f)
                                             else (if (isDark) Color(0xFF1E2F29) else Color(0xFFEFF4FF))
                                         ),
                                     contentAlignment = Alignment.Center
@@ -2629,7 +2629,7 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(Spacing.md),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Box(
@@ -2677,7 +2677,7 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Row(
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(Spacing.md),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Box(
@@ -2729,7 +2729,7 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(Spacing.md),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Box(
@@ -2774,7 +2774,7 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
                 modifier = Modifier.fillMaxWidth(),
                 isDark = isDark
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                     Text(
                         text = "TRANSACTION NOTE / MEMO",
                         fontSize = 11.sp,
@@ -2818,7 +2818,7 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
                                 tint = if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309),
                                 modifier = Modifier.size(16.dp)
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(Spacing.sm))
                             Text(
                                 "Upload Receipt Image",
                                 color = if (isDark) Color(0xFFE4F0EC) else Color(0xFF0E1915),
@@ -2831,7 +2831,7 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(160.dp)
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(RoundedCornerShape(Corners.md))
                                 .background(Color.Black.copy(alpha = 0.05f))
                         ) {
                             AsyncImage(
@@ -2844,8 +2844,8 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
                                 onClick = { imagePathState = null },
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
-                                    .padding(8.dp)
-                                    .background(Color.Black.copy(alpha = 0.6f), CircleShape)
+                                    .padding(Spacing.sm)
+                                    .background(Color.Black.copy(alpha = Opacity.subtle), CircleShape)
                                     .size(28.dp)
                             ) {
                                 Icon(
@@ -2891,10 +2891,10 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
                                     }
                                     .background(
                                         if (isDark) Color(0xFF1A2622) else Color(0xFFF4F8F6),
-                                        RoundedCornerShape(12.dp)
+                                        RoundedCornerShape(Corners.md)
                                     )
-                                    .padding(12.dp),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                    .padding(Spacing.md),
+                                horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Box(
@@ -2953,10 +2953,10 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
                                     }
                                     .background(
                                         if (isDark) Color(0xFF1A2622) else Color(0xFFF4F8F6),
-                                        RoundedCornerShape(12.dp)
+                                        RoundedCornerShape(Corners.md)
                                     )
-                                    .padding(12.dp),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                    .padding(Spacing.md),
+                                horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Box(
@@ -3022,9 +3022,9 @@ fun AddTransactionScreen(viewModel: WealthViewModel, navController: NavControlle
                                     }
                                     .background(
                                         if (isDark) Color(0xFF1A2622) else Color(0xFFF4F8F6),
-                                        RoundedCornerShape(12.dp)
+                                        RoundedCornerShape(Corners.md)
                                     )
-                                    .padding(12.dp),
+                                    .padding(Spacing.md),
                                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -3375,7 +3375,7 @@ fun CategoriesScreen(viewModel: WealthViewModel, navController: NavController) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingVals)
-                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .padding(horizontal = Spacing.lg, vertical = Spacing.sm)
         ) {
             // Tab selection
             TabRow(
@@ -3389,17 +3389,17 @@ fun CategoriesScreen(viewModel: WealthViewModel, navController: NavController) {
                 contentColor = MaterialTheme.colorScheme.primary
             ) {
                 Tab(selected = activeTab == "All", onClick = { activeTab = "All" }) {
-                    Text("All Log", modifier = Modifier.padding(12.dp), color = if (activeTab == "All") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f), fontWeight = if (activeTab == "All") FontWeight.Bold else FontWeight.Normal)
+                    Text("All Log", modifier = Modifier.padding(Spacing.md), color = if (activeTab == "All") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground.copy(alpha = Opacity.subtle), fontWeight = if (activeTab == "All") FontWeight.Bold else FontWeight.Normal)
                 }
                 Tab(selected = activeTab == "Income", onClick = { activeTab = "Income" }) {
-                    Text("Income", modifier = Modifier.padding(12.dp), color = if (activeTab == "Income") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f), fontWeight = if (activeTab == "Income") FontWeight.Bold else FontWeight.Normal)
+                    Text("Income", modifier = Modifier.padding(Spacing.md), color = if (activeTab == "Income") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground.copy(alpha = Opacity.subtle), fontWeight = if (activeTab == "Income") FontWeight.Bold else FontWeight.Normal)
                 }
                 Tab(selected = activeTab == "Expense", onClick = { activeTab = "Expense" }) {
-                    Text("Expense", modifier = Modifier.padding(12.dp), color = if (activeTab == "Expense") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f), fontWeight = if (activeTab == "Expense") FontWeight.Bold else FontWeight.Normal)
+                    Text("Expense", modifier = Modifier.padding(Spacing.md), color = if (activeTab == "Expense") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground.copy(alpha = Opacity.subtle), fontWeight = if (activeTab == "Expense") FontWeight.Bold else FontWeight.Normal)
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(Spacing.lg))
 
             // Log listing
             val filteredTxs = remember(transactions, activeTab) {
@@ -3414,7 +3414,7 @@ fun CategoriesScreen(viewModel: WealthViewModel, navController: NavController) {
                 ) {
                     Text(
                         text = "No transactions logged in this category",
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = Opacity.subtle),
                         fontSize = 14.sp
                     )
                 }
@@ -3428,24 +3428,24 @@ fun CategoriesScreen(viewModel: WealthViewModel, navController: NavController) {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(Corners.md),
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
                         ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(16.dp),
+                                    .padding(Spacing.lg),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Row(
-                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
                                     modifier = Modifier.weight(1f),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Box(
                                         modifier = Modifier
-                                            .size(40.dp)
+                                            .size(Sizes.iconXl)
                                             .clip(CircleShape)
                                             .background(parseHexColor(cat?.color ?: "#7F8C8D").copy(alpha = 0.2f)),
                                         contentAlignment = Alignment.Center
@@ -3472,7 +3472,7 @@ fun CategoriesScreen(viewModel: WealthViewModel, navController: NavController) {
                                 }
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
                                 ) {
                                     Text(
                                         text = "$currency ${tx.amount}",
