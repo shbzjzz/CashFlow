@@ -11,7 +11,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
- redesign/mint-finance-skin
 // ─────────────────────────────────────────────────────────────
 //  Mint Finance — Color Schemes
 //  Light: warm cream surfaces, sage primary, deep forest text
@@ -105,6 +104,7 @@ private val DarkColorScheme = darkColorScheme(
     onErrorContainer   = Color(0xFFFBE2DD),
 
     scrim              = Color(0xCC000000),
+)
 
 @Composable
 private fun buildDarkColorScheme(theme: ColorTheme) = darkColorScheme(
@@ -119,7 +119,7 @@ private fun buildDarkColorScheme(theme: ColorTheme) = darkColorScheme(
     onBackground = TextDark,
     surface = SurfaceDark,
     onSurface = TextDark,
-    surfaceVariant = SurfaceDarkElevated,
+    surfaceVariant = DarkSurfaceAlt,
     onSurfaceVariant = SecondaryTextDark,
     outlineVariant = Color(0xFF3F3F5A),
     error = ErrorRed
@@ -142,22 +142,15 @@ private fun buildLightColorScheme(theme: ColorTheme) = lightColorScheme(
     onSurfaceVariant = SecondaryTextLight,
     outlineVariant = Color(0xFFE2E2F0),
     error = ErrorRed
- main
 )
 
 @Composable
 fun MyApplicationTheme(
- redesign/mint-finance-skin
-  darkTheme: Boolean = isSystemInDarkTheme(),
-  // Disable dynamic color by default so the Mint Finance brand identity is preserved
-  dynamicColor: Boolean = false,
-  content: @Composable () -> Unit,
-
     darkTheme: Boolean = isSystemInDarkTheme(),
     colorTheme: ColorTheme = defaultColorTheme,
+    // Disable dynamic color by default so the brand identity is preserved
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
- main
 ) {
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
@@ -168,9 +161,5 @@ fun MyApplicationTheme(
         else -> buildLightColorScheme(colorTheme)
     }
 
- redesign/mint-finance-skin
-  MaterialTheme(colorScheme = colorScheme, typography = Typography, content = content)
-
     MaterialTheme(colorScheme = colorScheme, typography = Typography, content = content)
- main
 }

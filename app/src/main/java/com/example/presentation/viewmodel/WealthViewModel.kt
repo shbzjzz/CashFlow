@@ -10,8 +10,6 @@ import com.example.data.database.AppDatabase
 import com.example.data.model.*
 import com.example.data.repository.WealthRepositoryImpl
 import com.example.domain.repository.WealthRepository
-import com.example.ui.theme.ColorTheme
-import com.example.ui.theme.defaultColorTheme
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.io.BufferedReader
@@ -51,14 +49,14 @@ class WealthViewModel(application: Application) : AndroidViewModel(application) 
     private val _isDarkMode = MutableStateFlow(prefs.getBoolean("is_dark_mode", false))
     val isDarkMode: StateFlow<Boolean> = _isDarkMode.asStateFlow()
 
-    private val _colorTheme = MutableStateFlow(
-        try {
-            ColorTheme.valueOf(prefs.getString("color_theme", defaultColorTheme.name) ?: defaultColorTheme.name)
-        } catch (e: Exception) {
-            defaultColorTheme
-        }
-    )
-    val colorTheme: StateFlow<ColorTheme> = _colorTheme.asStateFlow()
+    private val defaultThemeName = com.example.ui.theme.ColorTheme.INDIGO.name
+    private val _colorTheme = MutableStateFlow(com.example.ui.theme.ColorTheme.valueOf(prefs.getString("color_theme", defaultThemeName) ?: defaultThemeName))
+    val colorTheme: StateFlow<com.example.ui.theme.ColorTheme> = _colorTheme.asStateFlow()
+
+    fun setColorTheme(theme: com.example.ui.theme.ColorTheme) {
+        _colorTheme.value = theme
+        prefs.edit().putString("color_theme", theme.name).apply()
+    }
 
     private val _savedPin = MutableStateFlow<String?>(prefs.getString("saved_pin", null))
     val savedPin: StateFlow<String?> = _savedPin.asStateFlow()
@@ -195,11 +193,6 @@ class WealthViewModel(application: Application) : AndroidViewModel(application) 
     fun toggleDarkMode() {
         _isDarkMode.value = !_isDarkMode.value
         prefs.edit().putBoolean("is_dark_mode", _isDarkMode.value).apply()
-    }
-
-    fun setColorTheme(theme: ColorTheme) {
-        _colorTheme.value = theme
-        prefs.edit().putString("color_theme", theme.name).apply()
     }
 
     fun setPin(pin: String?) {
